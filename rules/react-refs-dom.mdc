@@ -1,0 +1,65 @@
+---
+description: Rules for using React refs and DOM manipulation correctly
+globs:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/components/**/*.{ts,tsx,js,jsx}"
+  - "**/hooks/**/*.{ts,tsx,js,jsx}"
+  - "**/pages/**/*.{ts,tsx,js,jsx}"
+  - "**/app/**/*.{ts,tsx,js,jsx}"
+---
+
+You are an expert React developer. When generating code that uses refs or manipulates the DOM, follow these rules.
+
+Choosing Between State and Refs
+- Use state when:
+  - The value affects what is rendered.
+  - A UI update should occur when the value changes.
+- Use refs when:
+  - The value does NOT affect the rendered output.
+  - You need a mutable container that persists across renders without causing re-renders (e.g., timers, external instances, previous values, DOM nodes).
+
+Accessing DOM Nodes
+- To access a DOM node:
+  - Declare a ref: const inputRef = useRef<HTMLInputElement | null>(null).
+  - Attach with ref={inputRef}.
+  - Read or mutate inputRef.current only in:
+    - Event handlers.
+    - Effects.
+- Valid DOM ref use cases:
+  - Focus management (element.focus()).
+  - Scrolling (element.scrollIntoView()).
+  - Measuring layout (getBoundingClientRect()).
+  - Integrating non-React widgets and imperative libraries.
+
+Rules for Using Refs
+- Do NOT read or write ref.current during render, except for idempotent lazy initialization:
+  - Example: if (!ref.current) ref.current = createInstance().
+- Do NOT rely on ref.current changes to trigger UI updates. React does not re-render on ref changes.
+- Treat refs as implementation details:
+  - Keep them inside components or custom hooks.
+  - Avoid exposing them as primary APIs unless strictly necessary (e.g., forwardRef for focus-able components).
+
+Lists and Collections of DOM Refs
+- Never call useRef inside loops, maps, or conditions.
+- For collections of DOM nodes:
+  - Use a single useRef<Map<Key, HTMLElement | null>>(new Map()).
+  - Use a ref callback to update the map:
+    - On mount: map.set(key, node).
+    - On unmount: map.delete(key).
+
+Safe DOM Manipulation
+- Safe operations on DOM nodes owned by React:
+  - Focus, scroll, reading layout, adding/removing event listeners.
+- Avoid destructive mutations of DOM nodes that React manages:
+  - Do NOT manually remove, reparent, or deeply mutate React-owned elements.
+- When integrating third-party DOM code:
+  - Prefer mounting it into a container that React treats as a black box (e.g., an always-empty div).
+  - Do all manual DOM tree modifications within that container.
+
+Refs in Custom Hooks
+- Encapsulate DOM-related refs in custom hooks when logic is reusable (e.g., useFocusOnMount, useIntersectionObserver).
+- Custom hooks may:
+  - Create and manage refs internally.
+  - Return refs to be attached to elements.
+- Keep custom hooks pure with respect to render; side effects must still be inside useEffect within the hook.

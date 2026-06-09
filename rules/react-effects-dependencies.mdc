@@ -1,0 +1,100 @@
+---
+description: Comprehensive rules for useEffect, dependencies, and synchronization patterns
+globs:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/components/**/*.{ts,tsx,js,jsx}"
+  - "**/hooks/**/*.{ts,tsx,js,jsx}"
+  - "**/pages/**/*.{ts,tsx,js,jsx}"
+  - "**/app/**/*.{ts,tsx,js,jsx}"
+---
+
+You are an expert React developer. When generating code that uses useEffect and related APIs, follow these rules.
+
+When to Use Event Handlers vs Effects
+- Use event handlers for:
+  - Logic that should run only in direct response to user actions (click, submit, keydown, etc.).
+  - Sending analytics or POST requests for specific user interactions.
+  - Showing toasts or notifications from user actions.
+- Do NOT:
+  - Toggle state and then use an effect to "react" to that state change for event-only logic.
+  - Chain multiple effects where each only exists to update state for another effect.
+
+When to Use Effects
+- Use effects to synchronize React with external systems:
+  - Network connections (websockets, subscriptions, streaming APIs).
+  - Browser APIs and event listeners.
+  - Non-React widgets and imperative DOM APIs controlled by React state/props.
+  - Data fetching tied to "what is currently rendered" when no better framework-level APIs exist.
+- Structure:
+  - Setup external synchronization in the effect body.
+  - Return a cleanup function that fully undoes the setup.
+
+Effect Purity and Cleanup
+- Effects run after DOM commit, not during render:
+  - Never rely on them to compute values needed for immediate rendering.
+- Always provide cleanup for:
+  - Subscriptions (unsubscribe/removeEventListener in cleanup).
+  - Async tasks (ignore stale results or abort requests in cleanup).
+  - External instances (disconnect/destroy on cleanup).
+- Design effects so that:
+  - setup → cleanup → setup again is safe and idempotent.
+  - React Strict Mode double-mount in development does not break behavior.
+
+Dependencies – Follow the Linter
+- Always include all reactive values used in the effect in the dependency array:
+  - Reactive values: props, state, and variables/functions defined in the component body.
+- Treat dependency warnings as errors:
+  - Do NOT disable the eslint-plugin-react-hooks rules.
+  - Fix the code instead of manually forcing dependency arrays.
+- Values that can be safely omitted from dependencies:
+  - State setters returned by useState.
+  - The ref objects returned by useRef (NOT ref.current).
+
+Refactoring to Reduce Dependencies
+- To reduce unnecessary dependencies:
+  - Move constant, purely static values out of the component into module scope.
+  - Move object creation into the effect and depend on primitives instead of objects.
+  - Use functional setState updates to avoid capturing stale state:
+    - setValue(prev => computeNext(prev, input));
+- Split effects by responsibility:
+  - If an effect does multiple unrelated things, break it into multiple effects with focused dependencies.
+
+Avoid Misusing Effects
+- Do NOT:
+  - Use effects for derived data; compute derived values during render.
+  - Use effects to "fix up" state after render when you can model the desired state directly.
+  - Use custom "lifecycle" hooks that hide or avoid dependencies (e.g., useEffectOnce, useMount) to bypass the linter.
+
+Strict Mode Considerations
+- Assume effects can run more than once in development:
+  - Never gate the effect with a ref flag just to avoid double execution.
+  - Rely on proper cleanup and idempotent setup instead.
+
+Effect Events (useEffectEvent) – If Available
+- When useEffectEvent is available:
+  - Use it to define non-reactive callbacks that:
+    - Need access to the latest props/state.
+    - Should NOT cause the effect to re-run when they change.
+- Pattern:
+  - Put subscription setup/teardown in useEffect.
+  - Pass the Effect Event to the subscription as the callback.
+- Do NOT:
+  - Pass Effect Events as props.
+  - Call Effect Events outside an effect context.
+
+Data Fetching with Effects
+- Prefer framework or library-level data APIs (Next.js data fetching, React Server Components, TanStack Query) over manual useEffect fetches.
+- If using useEffect for fetching:
+  - Encapsulate logic in a custom hook (e.g., useData, useSearchResults).
+  - Handle race conditions:
+    - Use an ignore flag or AbortController to discard stale responses.
+  - Only re-fetch when relevant parameters (URL, query, page, filters) change.
+
+Custom Hooks and Reusable Escape Hatches
+- Extract repeated effect and escape-hatch logic into custom hooks:
+  - Name hooks descriptively (useOnlineStatus, useChatRoom, useMediaQuery).
+  - Implement useEffect and cleanup inside the custom hook.
+- Custom hooks:
+  - Share logic, not state; each call gets its own isolated state/effects.
+  - Must still obey the Rules of Hooks and effect dependency rules.

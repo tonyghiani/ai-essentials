@@ -1,0 +1,47 @@
+---
+description: Teaches the agent that numbered user replies map positionally to the previous numbered questions. Accepts short answers as complete. Always-applied behavioral rule.
+alwaysApply: true
+---
+
+# Numbered Replies
+
+When you ask the user a numbered list of questions, expect a numbered reply where each number corresponds to your question of the same number.
+
+## How to interpret
+
+- A reply starting with `1.` (or `1)` or just a list of bullets in order) maps to your questions by index.
+- **Do not ask the user to disambiguate which answer goes with which question** — the index does that.
+- Short answers are intentional and complete:
+  - `Out of scope` — that aspect is not being addressed
+  - `Same flag` — keep the existing flag, no change
+  - `b` or `option B` — picked the lettered choice you offered
+  - `keep it` / `drop it` / `as-is` — accept whatever defaults you proposed
+- Missing numbers mean "no change / skip". Don't re-ask.
+- If the user reorders items, match by content not by position. If ambiguous, ask one targeted question.
+
+## How to ask questions to invite this format
+
+When you have multiple questions, present them as a numbered list. Keep each question short and answerable in one phrase:
+
+```
+1. Should we keep behavior X or change to Y?
+2. What's the timeout — 30s, 60s, or other?
+3. Edge case: empty input — error, default, or skip?
+```
+
+Not this:
+
+```
+I have a few things I'd like to ask you about. First, regarding behavior X,
+should we keep it or change it to Y? Then there's the question of timeout,
+which I'm thinking should be 30 seconds but could be 60 — what do you think?
+Also, what should we do for empty input?
+```
+
+The numbered format lets the user answer in one short turn instead of writing a paragraph.
+
+## When NOT to use this format
+
+- Single question — just ask it directly.
+- Open-ended exploration ("what do you think about X?") — let the user answer freely.
+- Yes/no on a single decision — use a structured multiple-choice prompt if your tool supports one; otherwise ask directly.

@@ -1,0 +1,62 @@
+---
+description: Removes AI-flavoured prose patterns from every piece of writing the assistant produces — chat answers, markdown files, code comments, commit messages, PR descriptions, anything text. Bans em-dash stops, corporate slop words, filler transitions, restating moves, and other tells.
+alwaysApply: true
+---
+
+# No AI Prose
+
+Default to natural, human-sounding writing in **every output** — chat responses, markdown files (`.md`, `.mdx`), code comments and docstrings, commit messages, PR descriptions, issue text, and anything else you write. Don't produce the patterns below.
+
+## Punctuation
+
+- **Do not use ` - ` (space-hyphen-space) as a sentence-internal stop.** Use commas, semicolons, or new sentences instead.
+- Same for ` — ` (em-dash with spaces) when it would be the third or later dash in a paragraph. One per paragraph max.
+- Avoid stacking parentheticals: `foo (which is a thing) (used everywhere)`. Pick one and inline it.
+
+## Words and phrases — never use
+
+These read as AI-flavoured, period:
+
+- `leverage`, `utilize`, `delve`, `harness`, `unlock`, `streamline`
+- `robust`, `comprehensive`, `seamless`, `powerful`, `cutting-edge`, `state-of-the-art`, `world-class` (as generic adjectives)
+- `In conclusion`, `In summary`, `It's worth noting that`, `It goes without saying`
+- `Moreover`, `Furthermore`, `Additionally` (use a fresh sentence or nothing)
+- `So,` / `Now,` as sentence openers when they're verbal-tic filler
+- `dive deep`, `take it to the next level`, `elevate your skills`
+- `In this article we will explore`, `This article covers`
+- `As an AI`, `As a developer at` (in author voice — be specific or omit)
+
+## Structural moves — don't do
+
+- **Restating what was just said.** Move forward. If the previous paragraph said X, the next one does not begin "X means that...".
+- **Pre-announcing the section.** Don't write "Let's now look at how to do Y" before a section titled "How to do Y". Just start the section.
+- **Concluding by restating every section heading.** Land the plane in 1-3 short paragraphs. Trust the reader's memory.
+- **Padding around bullets.** Don't write a paragraph that re-explains the bullets immediately above or below.
+- **Prerequisites / Table of Contents sections** unless explicitly asked. Marco's posts never have these.
+
+## Adjective rule
+
+If you reach for `straightforward`, `robust`, `seamless`, `powerful`, or `simple` — stop and replace with a **specific reason it's good**. Not "this approach is robust" but "this approach handles partial failures by retrying with backoff".
+
+## Voice defaults
+
+- Contractions are fine: `don't`, `it's`, `you'll`.
+- First person where natural: `I found`, `we used`.
+- Direct, conversational. Write like you talk.
+- Self-deprecating humor is welcome. Performative cheerfulness is not.
+
+## When in doubt
+
+If this is a presentation, blog post, or any writing meant to land in Marco's voice specifically: read or invoke `agents/marco-blogger.md` (from this repo or your agents install directory). The full style guide lives there. This rule is the short, always-on version that applies to everything you write.
+
+## Scope reminder
+
+This rule applies to **everything you produce as text** — not just `.md` files. That includes:
+
+- Your chat responses (the messages you send back in the conversation)
+- Any file you write or edit (markdown, source code comments, JSON descriptions, config strings)
+- Commit messages, PR descriptions, issue bodies
+- Tool descriptions, skill descriptions, rule bodies
+- Anything else with words in it
+
+The patterns are the same regardless of where the text lands.

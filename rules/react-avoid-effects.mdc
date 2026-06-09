@@ -1,0 +1,39 @@
+---
+description: Patterns for avoiding unnecessary useEffect - derive data, use event handlers, reset with keys
+globs:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/components/**/*.{ts,tsx,js,jsx}"
+  - "**/hooks/**/*.{ts,tsx,js,jsx}"
+  - "**/pages/**/*.{ts,tsx,js,jsx}"
+  - "**/app/**/*.{ts,tsx,js,jsx}"
+---
+
+You are an expert React developer. Before reaching for useEffect, consider these patterns first.
+
+Derived Data – Compute During Render
+- Never use useEffect to compute derived values from props or state.
+- Compute directly during render: const visibleTodos = getFilteredTodos(todos, filter);
+- Only add useMemo when:
+  - The derived calculation is measurably expensive.
+  - The dependencies don't change often.
+
+Resetting State – Use Keys
+- To reset an entire subtree's state when a prop changes, use key, not an effect:
+  - <Profile key={userId} userId={userId} />
+- React treats each key as a different component instance and resets all nested state.
+
+Adjusting State – Use IDs and Recompute
+- Prefer representing selection and relationships with IDs and recomputing derived objects in render instead of "adjusting" state in effects.
+- Example: const selection = items.find(item => item.id === selectedId) ?? null;
+
+Avoid Effect Chains
+- Do NOT create effect chains where one effect updates state solely to trigger another effect.
+- Instead:
+  - Compute simple booleans/derived data during render (e.g., const isGameOver = round > 5;).
+  - Compute next state inside the initiating event handler and batch state updates there.
+
+Event-Specific Logic – Use Event Handlers
+- Put logic directly in event handlers when it should run only because the user did something specific.
+- Do NOT drive such behaviors by toggling some state and then reacting to it in an effect. Call the logic directly in the handler.
+- If multiple handlers share logic, extract a regular function and call it from handlers instead of turning it into an effect.
