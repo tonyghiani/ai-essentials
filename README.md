@@ -1,4 +1,4 @@
-# ai-essentials
+# AI Essentials
 
 Personal AI agent configuration: rules, skills, subagents, and presentation assets. Works with Cursor, Claude Code, Codex, and other agentic coding tools. Copy or symlink what you need, or cherry-pick individual files.
 
