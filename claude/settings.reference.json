@@ -1,0 +1,59 @@
+{
+  "//": "Reference copy of ~/.claude/settings.json. NOT symlinked: Claude Code writes to settings.json when you change theme or model via /config, and a symlink risks clobbering. Diff this against the live file when you want to reconcile.",
+
+  "//model": "Deliberately absent. Elastic's remote settings pin model=opusplan (Opus for planning, claude-sonnet-4-6 for execution) and that wins on restart. A local model key here is dead config that only misleads you about what is running.",
+
+  "//effortLevel": "high, not xhigh. xhigh globally spent maximum reasoning budget on trivial renames. Bump to xhigh via /config for genuinely hard reasoning; a skill cannot change session effort, so this is a manual toggle by design.",
+  "effortLevel": "high",
+
+  "permissions": {
+    "allow": ["Bash(*)", "Read(*)", "Write(*)", "Edit(*)"],
+    "ask": [
+      "Bash(rm -rf:*)",
+      "Bash(rm -r:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -fd:*)",
+      "Bash(git checkout .:*)",
+      "Bash(git branch -D:*)",
+      "Bash(sudo:*)",
+      "Bash(chmod 777:*)",
+      "Bash(npm publish:*)",
+      "Bash(yarn publish:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh release create:*)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/*.p12)",
+      "Read(**/id_rsa*)",
+      "Read(**/id_ed25519*)",
+      "Read(**/.aws/credentials)",
+      "Read(**/.ssh/**)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf ~:*)"
+    ]
+  },
+
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME\"/.claude/hooks/log-correction-signal.mjs"
+          }
+        ]
+      }
+    ]
+  },
+
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/marco/.claude/statusline-command.sh"
+  },
+  "theme": "dark-ansi"
+}

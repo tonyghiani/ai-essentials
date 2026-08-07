@@ -1,6 +1,7 @@
 ---
 name: esql-expert
 model: inherit
+tools: Bash, Read, Glob, Grep
 description: >-
   ES|QL expert agent — writes, debugs, and explains Elasticsearch Query Language
   (ES|QL) queries. Use when the user needs help writing ES|QL queries,

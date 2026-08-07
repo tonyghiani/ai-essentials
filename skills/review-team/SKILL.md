@@ -14,26 +14,19 @@ then consolidate findings into a single prioritized report.
 
 ## Reviewers
 
-| # | Name                  | Persona source                                            |
-|---|-----------------------|-----------------------------------------------------------|
-| 1 | Code Quality          | `skills/branch-refactor-planner/SKILL.md`                 |
-| 2 | Adversarial           | `skills/review-team/reviewers/adversarial.md`             |
-| 3 | Architecture          | `skills/review-team/reviewers/architecture.md`            |
-| 4 | Fresh Eyes            | `skills/review-team/reviewers/fresh-eyes.md`              |
-| 5 | Product Flow          | `skills/review-team/reviewers/product-flow.md`            |
-| 6 | Observability Expert  | `skills/review-team/reviewers/observability-expert.md`    |
+| # | Name                  | Persona source                                  |
+|---|-----------------------|-------------------------------------------------|
+| 1 | Code Quality          | `../branch-refactor-planner/SKILL.md`           |
+| 2 | Adversarial           | `reviewers/adversarial.md`                      |
+| 3 | Architecture          | `reviewers/architecture.md`                     |
+| 4 | Fresh Eyes            | `reviewers/fresh-eyes.md`                       |
+| 5 | Product Flow          | `reviewers/product-flow.md`                     |
+| 6 | Observability Expert  | `reviewers/observability-expert.md`             |
 
-Paths are relative to this repository (or your skills install root). Resolve
-them using [Path resolution](../../README.md#path-resolution).
-
-## Path resolution
-
-When a skill references `skills/...`:
-
-1. If this repo is open in the workspace, resolve from the repo root.
-2. If installed via symlink (e.g. `~/.cursor/skills/ai-essentials/`), resolve
-   from that install directory (the parent folder containing `review-team/`).
-3. If neither applies, ask the user where skills are installed.
+Paths are relative to **this skill's own directory**. When installed for Claude
+Code that is `~/.claude/skills/review-team/`, so `reviewers/adversarial.md`
+resolves to `~/.claude/skills/review-team/reviewers/adversarial.md`. If a read
+fails, `ls` the skill directory rather than guessing.
 
 ## Mode detection
 

@@ -1,7 +1,7 @@
 ---
 name: review-pr-comments
 voice-profile: marco
-description: Triage PR review comments — decide whether to accept or push back on each one. Given comment links from a GitHub PR, fetches comment content and PR diff, then reasons about each comment in context. Uses a personal voice profile for suggested replies — swap skills/shared/pr-review-voice-marco.md for your own. Use when the user shares PR comment links, asks "should I accept this feedback", or wants help responding to PR review comments.
+description: Triage PR review comments — decide whether to accept or push back on each one. Given comment links from a GitHub PR, fetches comment content and PR diff, then reasons about each comment in context. Uses a personal voice profile for suggested replies — swap ../shared/pr-review-voice-marco.md for your own. Use when the user shares PR comment links, asks "should I accept this feedback", or wants help responding to PR review comments.
 ---
 
 # Review PR Comments
@@ -11,7 +11,7 @@ or **push back** on each one, with reasoning grounded in the actual diff.
 
 ## Path resolution
 
-Resolve `skills/...` paths per [README — Path resolution](../../README.md#path-resolution).
+Paths below are relative to this skill's directory.
 
 ## Inputs
 
@@ -55,7 +55,7 @@ If the diff hunk alone is insufficient to reason about a comment:
 2. Check git blame or history for context on why the code was written that way.
 3. **Last resort only:** if the comment spans multiple files, touches
    architecture, or cannot be judged from local context, read and follow
-   `skills/review-pr/SKILL.md` on the same PR. Do **not** escalate for
+   `../review-pr/SKILL.md` on the same PR. Do **not** escalate for
    single-line style nits or localized logic questions.
 
 ### Step 4 — Analyze each comment
@@ -84,7 +84,7 @@ For each comment, output a verdict block:
 [2-4 sentence reasoning explaining why, referencing the actual code]
 
 **Suggested reply:**
-> [Draft reply using skills/shared/pr-review-voice-marco.md — or your own voice profile.]
+> [Draft reply using ../shared/pr-review-voice-marco.md — or your own voice profile.]
 ```
 
 ### Verdict guidelines
@@ -108,7 +108,7 @@ Lean toward pushing back when:
 
 ### Voice for suggested replies
 
-Read and follow `skills/shared/pr-review-voice-marco.md`.
+Read and follow `../shared/pr-review-voice-marco.md`.
 
 ### End with a summary
 

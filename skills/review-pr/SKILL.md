@@ -11,7 +11,8 @@ transform the report into copy-pasteable conventional comments.
 
 ## Path resolution
 
-Resolve `skills/...` paths per [README — Path resolution](../../README.md#path-resolution).
+Paths below are relative to this skill's directory (`~/.claude/skills/review-pr/`
+for a Claude Code install).
 
 ## Inputs
 
@@ -44,7 +45,7 @@ proceed or narrow the scope.
 
 ### Step 2 — Run the review-team skill
 
-Read and follow `skills/review-team/SKILL.md` using **branch review mode**.
+Read and follow `../review-team/SKILL.md` using **branch review mode**.
 The checked-out PR branch is the HEAD; the base branch from `PR_META` is the
 comparison target.
 
@@ -73,7 +74,7 @@ Use other labels when they fit better:
 
 #### Voice
 
-Read and follow `skills/shared/pr-review-voice-marco.md` for tone and phrasing.
+Read and follow `../shared/pr-review-voice-marco.md` for tone and phrasing.
 Replace with your own voice profile file if this repo is forked.
 
 #### Code snippets
