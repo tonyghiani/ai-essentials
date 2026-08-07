@@ -55,26 +55,24 @@ Run `./scripts/validate.sh` after edits to catch broken cross-references and ski
 
 ## Getting started
 
-### Option A — clone and symlink (stays in sync with git pull)
-
-**Cursor:**
+### Option A — installer (recommended)
 
 ```bash
-ln -s /path/to/ai-essentials/rules ~/.cursor/rules/ai-essentials
-ln -s /path/to/ai-essentials/skills ~/.cursor/skills/ai-essentials
-ln -s /path/to/ai-essentials/agents ~/.cursor/agents/ai-essentials
+git clone https://github.com/marcoghiani/ai-essentials
+cd ai-essentials
+chmod +x setup/install.sh
+./setup/install.sh --all          # Claude Code + Cursor + Codex CLI
 ```
 
-**Project-scoped (any tool that reads project config):**
+Or per tool:
 
 ```bash
-mkdir -p .cursor/rules .cursor/skills .cursor/agents
-ln -s ../../path/to/ai-essentials/rules .cursor/rules/ai-essentials
-ln -s ../../path/to/ai-essentials/skills .cursor/skills/ai-essentials
-ln -s ../../path/to/ai-essentials/agents .cursor/agents/ai-essentials
+./setup/install.sh --claude-code
+./setup/install.sh --cursor
+./setup/install.sh --codex
 ```
 
-For Claude Code, Codex, or tools without a skills directory: copy `SKILL.md` files into your tool's skill/instruction mechanism, or `@`-mention them when needed.
+Safe to re-run; existing files are backed up with `.bak`. See [SETUP.md](SETUP.md) for what each installer does, verification steps, and Windsurf/Copilot instructions.
 
 ### Option B — copy individual files
 

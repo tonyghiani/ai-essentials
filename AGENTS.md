@@ -29,7 +29,7 @@ Paths inside a skill resolve relative to that skill's own directory.
 
 | Task | Skill |
 |------|-------|
-| Marco's TS/React conventions | [skills/marco-code-style/SKILL.md](skills/marco-code-style/SKILL.md) |
+| Marco's TS/React conventions | [skills/marco-code-style/SKILL.md](skills/marco-code-style/SKILL.md) — project-agnostic; derived from 748 authored commits |
 | Effect / ref / dependency discipline | [skills/react-patterns/SKILL.md](skills/react-patterns/SKILL.md) |
 | Test-first loop | [skills/tdd/SKILL.md](skills/tdd/SKILL.md) |
 | Multi-perspective code review | [skills/review-team/SKILL.md](skills/review-team/SKILL.md) |
@@ -57,6 +57,14 @@ Paths inside a skill resolve relative to that skill's own directory.
 - [claude/CLAUDE.md](claude/CLAUDE.md) — always-on global instructions
 - [claude/settings.reference.json](claude/settings.reference.json) — annotated settings reference
 - [claude/hooks/log-correction-signal.mjs](claude/hooks/log-correction-signal.mjs) — `UserPromptSubmit` hook feeding `memory-distill`
+
+## Codex CLI specifics
+
+- [codex/INSTRUCTIONS.md](codex/INSTRUCTIONS.md) — global instructions (installed to `~/.codex/instructions.md`)
+
+## Installation
+
+Run `./setup/install.sh --all` after cloning. See [SETUP.md](SETUP.md) for details.
 
 ## Personal vs portable
 

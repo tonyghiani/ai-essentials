@@ -37,14 +37,13 @@ Give your recommended answer with each question so the user can say "yes" instea
 
 Before you say a change is complete, prove it. Scope the check to what you touched; never run repo-wide checks.
 
-- **Kibana**: `node scripts/check.js --scope=staged` (or `--scope=local`). Typecheck alone: `node scripts/type_check --project <path>/tsconfig.json`. Lint: `node scripts/eslint --fix $(git diff --name-only)`. Tests: `node scripts/jest <path>`.
-- **Elsewhere**: the project's typecheck plus lint plus the tests covering the change.
+Run the project's typecheck, linter, and test suite scoped to the changed files. Use the project's own scripts; don't guess or run global commands.
 
 If a check fails, say so and show the output. If you skipped one, say which and why. "Should work" is not a result. Never silence a failure by deleting, skipping, or `@ts-expect-error`-ing it.
 
 ## TypeScript and React invariants
 
-These are Marco's observed conventions, extracted from his authored Kibana code. They apply to all TS/TSX you write. For depth (testing style, error handling, folder scaffolds, comment style) invoke the `marco-code-style` skill.
+These are Marco's observed conventions, extracted from his authored code. They apply to all TS/TSX you write. For depth (testing style, error handling, folder scaffolds, comment style) invoke the `marco-code-style` skill.
 
 - **Components**: `export function PascalCase(...)`. Arrow-const only for one-expression wrappers.
 - **Props**: destructure in the signature. Inline object type under ~4 props; `interface XProps` at 4+ or when reused.
