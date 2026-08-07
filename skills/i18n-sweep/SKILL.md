@@ -45,18 +45,14 @@ i18n.translate('xpack.myPlugin.itemsFound', {
 
 ## House conventions
 
-- Ids: `xpack.<plugin>.<area><Name>`, camelCase after the plugin segment.
+- Ids: stable, namespaced, camelCase: `myApp.featureArea.descriptiveName`.
 - Hoist to a SCREAMING_SNAKE module const when the message is used more than once or would bloat the JSX.
 - Shared copy for a component folder goes in a colocated `translations.ts`.
 - `FormattedMessage` only when the message contains JSX; `i18n.translate` otherwise.
 
 ## Verify
 
-```bash
-node scripts/i18n_check --fix        # Kibana
-```
-
-Run it and report the result. `--fix` handles mechanical problems; it will not fix concatenation or a bad plural, so read the remaining output rather than assuming a clean exit means clean copy.
+Run your project's i18n extraction and check tool. Report the result — `--fix` handles mechanical problems; it will not fix concatenation or a bad plural, so read the remaining output rather than assuming a clean exit means clean copy.
 
 ## Output
 
@@ -64,7 +60,7 @@ Run it and report the result. `--fix` handles mechanical problems; it will not f
 ## i18n sweep
 
 ### Untranslated
-- `file:line` — "<string>" in <prop or JSX>. Suggested id: `xpack.<plugin>.<name>`
+- `file:line` — "<string>" in <prop or JSX>. Suggested id: `<namespace>.<area>.<name>`
 
 ### Breaks translation
 - `file:line` — <concatenation / ternary plural / runtime id>. Fix: <the ICU message>

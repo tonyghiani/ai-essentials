@@ -48,7 +48,7 @@ Also check: is validation at the boundary, or does raw input reach a query build
 
 - Can a field be added later without a breaking change? Prefer objects over positional tuples, named unions over booleans.
 - Is the surface minimal? Every exported symbol is a future obligation. Don't export what callers don't need.
-- Is the abstraction at the caller's level, or does it expose implementation? A route that takes an ES query is coupled to Elasticsearch forever.
+- Is the abstraction at the caller's level, or does it expose implementation? A route that accepts an internal data structure forces callers to know about an implementation detail that may change.
 - Versioning: does the framework's route versioning apply, and is it set?
 
 ### Persistence and migration

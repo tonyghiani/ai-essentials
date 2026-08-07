@@ -31,7 +31,8 @@ describe('SignificantEventsMaintenanceService', () => {
 **3. Run it and read the failure.** This is the step people skip.
 
 ```bash
-node scripts/jest <path/to/file.test.ts>   # Kibana
+# use your project's test runner, e.g.:
+npx jest <path/to/file.test.ts>
 ```
 
 The test must fail because the behaviour is missing, not because of a typo, a bad import, or a mock that throws. A test that fails for the wrong reason proves nothing. If the error isn't the one you predicted, fix the test before touching the implementation.
@@ -53,7 +54,7 @@ Follow `marco-code-style` for the full picture. The parts that matter most here:
 - **Assert concrete values**, not snapshots. `expect.objectContaining` where partial matching is honest.
 - **Async via `.rejects`/`.resolves`**: `await expect(fn()).rejects.toMatchObject({ statusCode: 409 })`.
 - **Negative assertions pin the contract**: `expect(service.getStatus).not.toHaveBeenCalled()` proves the guard took the cheap path.
-- Shared fixtures as SCREAMING_SNAKE consts: `const REQUEST = {} as KibanaRequest`.
+- Shared fixtures as SCREAMING_SNAKE consts: `const REQUEST = {} as Request`.
 - Fakes cast at the seam with `as unknown as T`.
 
 ## What to test

@@ -50,15 +50,6 @@ yarn why <pkg>
 
 **Polyfills for baselines you don't support.** Check the browserslist target against what's being polyfilled.
 
-## In Kibana
-
-Bundle limits are enforced per plugin. When a limit trips, the fix is almost never raising the limit.
-
-- Check the plugin's page load bundle for what got pulled into it
-- `public/plugin.tsx` should lazy-load the app: `await import('./app_root')`
-- `server/index.ts` must not statically import `./plugin`; use `import type` and `await import()` inside the initializer, so a disabled plugin isn't parsed
-- Shared packages imported from `common/` land in every consumer's bundle
-
 ## Output
 
 ```markdown

@@ -54,12 +54,6 @@ signal quality, and analytical soundness**.
 - Is there enough context in the alert / query output to start triage?
 - Are signals correlated or independent? (alert storms from a single root cause)
 
-### ES|QL and Elasticsearch specifics
-- Are ES|QL queries syntactically correct and semantically sound?
-- Do field references match the expected mapping types?
-- Are aggregation bucket sizes appropriate for the data volume?
-- Could the query time out or OOM on large datasets?
-
 ## How to review
 
 1. Identify all Observability-related logic in the change: queries, rules,
