@@ -100,8 +100,17 @@ Persistent instructions for the agent. Cursor uses `.mdc` with YAML frontmatter;
 | [`react-avoid-effects.mdc`](rules/react-avoid-effects.mdc) | Frontend globs | Prefer deriving data and event handlers over `useEffect` |
 | [`react-effects-dependencies.mdc`](rules/react-effects-dependencies.mdc) | Frontend globs | `useEffect` dependency arrays and sync patterns |
 | [`react-refs-dom.mdc`](rules/react-refs-dom.mdc) | Frontend globs | Refs and direct DOM access in React |
+| [`typescript-style.mdc`](rules/typescript-style.mdc) | `**/*.ts(x)` | Naming, typing, control flow, comment intent |
+| [`project-structure.mdc`](rules/project-structure.mdc) | `**/*.ts(x)` | Feature folders, barrels, type placement, import paths |
+| [`react-components.mdc`](rules/react-components.mdc) | `**/*.{tsx,jsx}` | Component declaration, props, rendering, state placement |
+| [`node-api-patterns.mdc`](rules/node-api-patterns.mdc) | Server globs | Layering, boundary validation, typed errors, concurrency |
+| [`testing-style.mdc`](rules/testing-style.mdc) | Test globs | Colocation, test naming, mocking split, assertions |
 
 React rules target `*.{tsx,jsx}` and common frontend paths (`components/`, `hooks/`, `pages/`, `app/`). They won't fire on arbitrary backend `.ts` files when installed globally.
+
+The five code-style rules encode one author's conventions, confirmed by a 69-question interview against 40 merged PRs and five personal repositories. Each opens by deferring to project conventions. Swap the bodies for your own and the rest of the setup still works.
+
+Mechanical rules stay out of them and live in [`eslint-recommendations.md`](eslint-recommendations.md): prettier settings, `simple-import-sort` groups, and lint rules covering enums, `any`, naming casing, and test titles. That file is reference material, not installed anywhere.
 
 ---
 

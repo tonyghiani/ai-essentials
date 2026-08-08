@@ -11,9 +11,29 @@ Agent configuration for this repository. Install globally via symlinks (see
 For Claude Code these two, plus verification discipline and a compact TS/React
 invariants block, are assembled in [claude/CLAUDE.md](claude/CLAUDE.md).
 
+## Code style (file-scoped)
+
+Each rule activates on its own globs. Read the one matching the file you are editing.
+
+| Editing | Rule |
+|---|---|
+| any `.ts` / `.tsx` | [rules/typescript-style.mdc](rules/typescript-style.mdc) |
+| adding files, folders, or imports | [rules/project-structure.mdc](rules/project-structure.mdc) |
+| components and hooks | [rules/react-components.mdc](rules/react-components.mdc) |
+| server, services, routes | [rules/node-api-patterns.mdc](rules/node-api-patterns.mdc) |
+| `*.test.ts(x)` / `*.spec.ts(x)` | [rules/testing-style.mdc](rules/testing-style.mdc) |
+
+These encode Marco's conventions, confirmed by a 69-question style interview against 40 merged PRs
+and five personal repositories. Project conventions win where they conflict; read the neighbouring
+files first.
+
+Mechanical rules (formatting, import order, enums, `any`, naming casing) are config, not guidance.
+They live in [eslint-recommendations.md](eslint-recommendations.md) and stay out of the rule files
+on purpose.
+
 ## React (frontend files only)
 
-When editing React UI code, follow:
+Effect, dependency, and ref discipline is separate from component structure:
 
 - [rules/react-avoid-effects.mdc](rules/react-avoid-effects.mdc)
 - [rules/react-effects-dependencies.mdc](rules/react-effects-dependencies.mdc)

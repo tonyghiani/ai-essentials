@@ -1,0 +1,47 @@
+---
+description: Folder layout, barrels, type placement, and import paths
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+---
+
+Project conventions win. Read the surrounding tree first; these apply when adding a new area.
+
+## Folders
+
+❌ components/  hooks/  utils/  types/          // grouped by kind
+✅ pages/significant_events/components/streams_view/
+     streams_view.tsx  utils.ts  utils.test.ts
+Feature folders. Top-level `components/`, `hooks/`, `util/` only for genuinely cross-feature code.
+
+❌ streams_view/index.tsx                       // when the folder also holds tests, hooks, utils
+✅ streams_view/streams_view.tsx
+`index.tsx` only when the folder holds a lone component and nothing else.
+
+Files and folders are `snake_case`, hooks included: `use_device.ts`. One hook per file, named for it.
+
+## Barrels
+
+❌ components/index.ts re-exporting every sibling
+✅ import { StreamsView } from './streams_view/streams_view';
+No barrels in app code; import from the defining file. A barrel is a published package's public
+entry point, nothing else. Delete dead re-exports when you find them.
+
+## Types
+
+❌ src/types.ts holding every domain model
+✅ the type lives with the module that owns it; shared types move to the closest common ancestor
+
+## Imports
+
+✅ import { StreamsView } from './streams_view/streams_view';   // within a feature
+✅ import { formatDate } from '@/utils/date';                   // across features or packages
+
+❌ import { type IFoo, bar } from './foo';
+✅ import type { IFoo } from './foo';
+   import { bar } from './foo';
+Inline `type` only when values and types genuinely come from one module.
+
+Circular dependencies are banned. Break the cycle by extracting the shared piece.
+Import ordering is enforced by `simple-import-sort`; do not hand-sort. See
+eslint-recommendations.md for the group configuration.

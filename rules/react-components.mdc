@@ -1,0 +1,67 @@
+---
+description: React component structure, props, rendering, and state placement
+globs:
+  - "**/*.tsx"
+  - "**/*.jsx"
+---
+
+Effect, dependency, and ref discipline is not restated here. See react-avoid-effects.mdc,
+react-effects-dependencies.mdc, and react-refs-dom.mdc.
+
+Project conventions win. Read the neighbouring files first.
+
+## Declaration
+
+✅ export function ChecklistCard({ checklist }: IChecklistCardProps) {}
+✅ export const AppHeader = (props: IAppHeaderProps) => <PageHeader {...props} />;
+Arrow-const only for a one-expression wrapper. Named exports only. No `React.FC`.
+
+❌ function Card(props: ICardProps) { const { checklist } = props; }
+✅ function Card({ checklist }: ICardProps) {}
+
+✅ interface IPromptProps { reason: TNotEnabledReason }
+A named props interface even at one prop.
+
+✅ export function XProvider({ children }: React.PropsWithChildren<IXProps>) {}
+
+## Rendering
+
+❌ return isLoading ? <Spinner /> : !isAvailable ? <Prompt /> : <Tree />;
+✅ if (isLoading) {
+     return <Spinner />;
+   }
+   if (!isAvailable) {
+     return <Prompt reason={reason} />;
+   }
+   return <Tree />;
+A stack of guard returns, then one JSX return. `return null` is normal.
+
+❌ {items.length && <List items={items} />}       // renders a stray "0"
+✅ {items.length > 0 && <List items={items} />}
+Conditional rendering is `{cond && …}`, with the condition coerced to a real boolean.
+
+✅ <EmptyPrompt data-testid="notEnabledPrompt" />
+`data-testid` on the root of every exported component and anything a test asserts.
+
+## State
+
+Server data lives in the query cache. Shared page state lives in context. User-visible filters and
+tabs live in the URL. `useState` is for ephemeral local UI only, such as open/closed or hover.
+
+❌ useEffect(() => setBlocksActivity(isLoading || isBlocked), [isLoading, isBlocked]);
+✅ const blocksActivity = isLoading || isError || isBlocked;
+
+Drill props freely. Context narrows badly in TypeScript, so reserve it for app-wide concerns
+(auth, theme, platform services) where narrowing does not matter.
+
+✅ export function useX() {
+     const context = useContext(Ctx);
+     if (!context) {
+       throw new Error('useX must be used within XProvider');
+     }
+     return context;
+   }
+Every context ships a consumer hook that throws when the provider is missing.
+
+No `memo`, `useMemo`, or `useCallback` without a measurement, or a comment naming the referential
+stability it protects.

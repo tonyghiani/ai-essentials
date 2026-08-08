@@ -1,0 +1,69 @@
+---
+description: Server layering, boundary validation, error handling, and concurrency
+globs:
+  - "**/server/**/*.ts"
+  - "**/services/**/*.ts"
+  - "**/routes/**/*.ts"
+  - "**/api/**/*.ts"
+---
+
+Project conventions win. Read the neighbouring files first.
+
+## Layering
+
+routes/<domain>/ → services/<domain>/{<domain>_service.ts (factory + contract interface),
+<domain>_client.ts (transport), <domain>_service.mock.ts, errors.ts, types.ts, repositories/}
+
+❌ export class MaintenanceService { constructor() {} }
+✅ export interface IMaintenanceService {
+     /** Reads the persisted state. */
+     getState(): Promise<TMaintenanceState>;
+   }
+   export function createMaintenanceService(deps: IDeps): IMaintenanceService {}
+Factory plus a JSDoc'd contract interface. Classes only for errors, or where a framework requires one.
+
+A service earns its own module when it holds state or exposes three or more operations. Below that,
+export a plain function.
+
+## Validation
+
+❌ query: z.object({ name: z.string() })
+✅ query: z.object({ name: z.string().max(MAX_ID_LENGTH).describe('The name of the stream.') })
+Validate where untrusted data enters. Every string and array carries an explicit bound, because
+unbounded input is a denial-of-service vector. Every field carries a description.
+
+## Errors
+
+❌ catch (e)                               ❌ throw new Error('Feature not enabled')
+✅ catch (error)
+✅ export class FeatureNotEnabledError extends StatusError {
+     static DEFAULT_MESSAGE = 'Feature is not enabled.';
+     constructor(message = FeatureNotEnabledError.DEFAULT_MESSAGE) {
+       super(message, 403);
+       this.name = 'FeatureNotEnabledError';
+     }
+   }
+Named `<Domain><Condition>Error`, carrying a status code.
+
+❌ const message = error instanceof Error ? error.message : String(error);
+✅ const message = getFormattedError(error);
+One normalisation helper per project, falling back to 'Unknown error'.
+
+Throw typed domain errors inside a single request path; the route layer maps them to status codes.
+An operation that fans out over many targets collects instead of throwing:
+
+✅ const failures: IFailure[] = [];
+   for (const target of targets) {
+     // sequential so a failure can be attributed to its target
+   }
+   return { state, partialFailures: failures };
+
+## Async
+
+❌ client.fetch(endpoint).then((result) => { setData(result); });
+✅ const result = await client.fetch(endpoint);
+✅ client.fetch(endpoint).then(setData);        // point-free chain onto an existing function
+
+✅ await Promise.all(checks.map(async (check) => ({ check, error: await run(check) })));
+Sequential await only when order matters or per-item failures must be attributed. Say which in a
+comment. Thread an abort signal through long-running or user-cancellable requests, not every call.

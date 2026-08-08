@@ -1,0 +1,76 @@
+---
+description: TypeScript naming, typing, control flow, and comment conventions
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+---
+
+Project conventions win. Read the neighbouring files first; apply these where a project has no
+established convention of its own.
+
+## Naming
+
+❌ const d = users.filter(u => u.active)      ❌ const rc = clientMock()
+✅ const activeUsers = users.filter((user) => user.active)     ✅ const rulesClient = clientMock()
+❌ const disabled = !status                   ❌ const refetchInterval = 30000
+✅ const isDisabled = !status                 ✅ const REFETCH_INTERVAL_MS = 30_000
+
+`is`/`has` for state, `should`/`can` for intent. `assert*` throws, `get*` is cheap and sync, `fetch*`
+hits the network, `resolve*` is multi-step, `create*`/`make*` is a factory. Props take `onX`, the
+internal handler takes `handleX`.
+
+## Types
+
+❌ enum Reason { License = 'license' }
+✅ type TReason = 'license' | 'pricing_tier'
+✅ const REASONS = ['license', 'pricing_tier'] as const   // only when the runtime list is needed
+   type TReason = (typeof REASONS)[number]
+
+✅ interface IChecklist {}     type TChecklistSlug = string
+`I` on interfaces, `T` on type aliases. Reach for `interface` wherever it can substitute a `type`.
+
+❌ const entry = value as MemoryEntry
+✅ function isMemoryEntry(value: unknown): value is IMemoryEntry {}
+`any` is banned, tests included. `@ts-expect-error` needs an inline reason; `@ts-ignore` never.
+
+❌ if (reason === 'license') {} else if (reason === 'pricing_tier') {}
+✅ const MESSAGES: Record<TReason, () => string> = { license: () => '', pricing_tier: () => '' }
+   // Keying by reason makes this exhaustive: TypeScript errors if a reason lacks a message.
+
+Explicit return types on exported server functions, factories, route handlers, and hooks returning a
+wide or nullable object. Inferred elsewhere. Generics only where they remove an unsafe cast.
+`null` means explicitly absent; `undefined` means not provided.
+
+## Control flow
+
+❌ for (let i = 0; i < items.length; i++) { ids.push(items[i].id) }
+✅ const ids = items.map((item) => item.id)
+Declarative by default. An imperative loop is a performance escape hatch; say why in a comment.
+
+❌ if (!command) return input
+✅ if (!command) {
+     return input
+   }
+
+✅ return isBlocked ? undefined : new FeatureNotEnabledError(message)   // expression position
+❌ nested ternaries in JSX. Use a stack of guard returns.
+
+❌ function assertNotPaused(service, request, options) {}
+✅ function assertNotPaused({ service, request, options }: IAssertNotPausedParams) {}
+One destructured object past a single argument, and always once an argument is optional.
+
+Extract a block into a named function when it is reused, or when the name replaces the comment you
+were about to write.
+
+## Comments
+
+❌ // Refetch the maintenance status every 30 seconds.
+✅ // The state is deployment-wide and can change from another tab or user, so poll
+   // to avoid acting on a stale status.
+Comments state the invariant, the failure mode, or the reason. Never the mechanism.
+
+JSDoc every exported symbol, including each method inside a contract interface. `@param`/`@returns`
+only when non-obvious.
+
+Multi-phase procedures: extract each phase into a named function, then call them in order from the
+orchestrator with `// 1.` `// 2.` comments matching a numbered list in its JSDoc.

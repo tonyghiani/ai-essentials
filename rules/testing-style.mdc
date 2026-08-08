@@ -1,0 +1,54 @@
+---
+description: Test placement, naming, mocking, and assertion style
+globs:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/*.spec.tsx"
+---
+
+Project conventions win. Read the neighbouring tests first.
+
+## Placement
+
+❌ __tests__/checklist_card.test.tsx
+✅ checklist_card.tsx + checklist_card.test.tsx
+Colocated beside the source. No `__tests__` directories.
+
+`describe('<ExportedSymbol>')` at the top level, one nested `describe` per method or option group.
+
+## Naming
+
+❌ it('should throw a 409 error when the state blocks activity')
+✅ it('throws a 409 error in a state that blocks activity')
+Declarative third person. No "should".
+
+## Mocking
+
+✅ const makeService = (state: TMaintenanceState) =>
+     ({ getState: jest.fn(async () => state) } as unknown as IMaintenanceService);
+Services and anything stateful get a hand-rolled fake that round-trips state: a client that throws
+NotFound until `create`, an API that tracks `enabled` so pause then resume behaves. Cast at the seam
+with `as unknown as T`, and JSDoc each option field.
+
+✅ jest.mock('../../hooks/use_kibana', () => ({ useKibana: () => stub }));
+`jest.mock` is for module-mocking your own hooks in component tests. Not for services.
+
+✅ const REQUEST = {} as IRequest;
+Shared fixtures are SCREAMING_SNAKE module constants.
+
+Variables get full names here too: `rulesClient`, not `rc`.
+
+## Assertions
+
+❌ expect(result).toMatchSnapshot();
+✅ await expect(assertNotPaused({ service, request: REQUEST })).rejects.toMatchObject({ statusCode: 409 });
+✅ expect(service.getStatus).not.toHaveBeenCalled();
+Concrete values, or `expect.objectContaining`. Snapshots only where a tool generates them.
+Negative assertions pin what must not happen, such as proving a guard took the cheap read.
+
+## What to test
+
+Edge cases and contracts first; the happy path only as their setup. Idempotency, retry after partial
+failure, a missing dependency, out-of-band state change, inverted ranges, and the exact boundary
+(299ms, then 300ms).
