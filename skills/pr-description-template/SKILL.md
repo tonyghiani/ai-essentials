@@ -46,46 +46,9 @@ Use this exact structure:
 - Keep bullets parallel and one line when possible.
 - Do not include unrelated implementation detail.
 
-## Next step: create the PR with gh
+## Output
 
-After drafting the body, offer to create the PR directly.
-
-Required inputs:
-- base branch (default to `main` if the user confirms)
-- PR title
-- final PR body
-
-Execution checklist:
-- Verify branch and local state:
-  - `git status`
-  - `git diff`
-  - `git log --oneline -n 10`
-- Ensure branch is pushed:
-  - `git push -u origin HEAD` (if needed)
-- Create the PR with heredoc formatting:
-
-```bash
-gh pr create --base "<base-branch>" --title "<pr-title>" --body "$(cat <<'EOF'
-> <concise PR title summarizing the main change>
-
-## 📓 Summary
-<2-4 sentences...>
-
-- <key change 1>
-- <key change 2>
-- <key change 3>
-
-## 🧪 Testing
-- <main flow to test>
-- <edge case or secondary flow>
-- <validation check>
-EOF
-)"
-```
-
-Final response requirements:
-- Return the PR URL.
-- If creation fails, provide the exact blocker and the next command to run.
+Return only the formatted PR description text. Do not offer to create the PR, run `gh`, or ask about a base branch.
 
 ## Example
 
