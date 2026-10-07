@@ -17,7 +17,8 @@ Or per tool:
 ./setup/install.sh --codex
 ```
 
-Safe to re-run. Existing files are backed up with a `.bak` suffix.
+Safe to re-run. Codex stores conflicts under `~/.codex/backups/ai-essentials/`;
+the other installers use a `.bak` suffix.
 
 ---
 
@@ -48,11 +49,44 @@ Symlinks `skills/` into `~/.cursor/skills/ai-essentials/`. Cursor has no native 
 @~/.cursor/skills/ai-essentials/<skill-name>/SKILL.md
 ```
 
-### Codex CLI
+### Codex
 
-Copies `codex/INSTRUCTIONS.md` to `~/.codex/instructions.md`. This is Codex's global instructions file, equivalent to Claude Code's `CLAUDE.md`.
+Installs for local Codex clients, including the CLI and desktop app:
 
-`AGENTS.md` at the repo root is read automatically when Codex runs inside this repo.
+| Installed path | Source |
+|----------------|--------|
+| `~/.codex/AGENTS.md` | Symlink to `codex/INSTRUCTIONS.md` |
+| `~/.codex/ai-essentials` | Symlink to this repository, including all `rules/` |
+| `~/.agents/skills/<name>` | Individual symlinks to `skills/<name>/` |
+| `~/.agents/skills/shared` | Symlink to shared skill references |
+| `~/.codex/agents/<name>.toml` | Generated from `codex/agents/<name>.toml` metadata and the full `agents/<name>.md` prompt |
+
+Codex reads global guidance from `AGENTS.md`. The older installer only copied
+`instructions.md`, which isn't an automatic global instruction source. An existing
+legacy file is backed up and replaced with a symlink for configurations that
+explicitly reference it. A non-empty `AGENTS.override.md` takes precedence; the
+installer reports it without replacing it. See [instruction discovery](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
+
+The global instructions route Codex to the appropriate `.mdc` files by task and file
+type. Codex doesn't apply Cursor's frontmatter automatically. These writing and
+code conventions are separate from Codex's command permission `.rules` files.
+
+Skills appear in `/skills` or when typing `$` in the CLI. Each skill is linked
+individually so existing skills remain installed. Shared references keep their
+relative paths. See [local skill discovery](https://learn.chatgpt.com/docs/build-skills).
+
+The `esql-expert` and `marco-blogger` personas are converted into native custom
+agents. Both inherit the parent model and reasoning effort. The ES|QL agent uses
+a read-only filesystem sandbox. Ask Codex to use the agent by name. See
+[custom agents](https://learn.chatgpt.com/docs/agent-configuration/subagents).
+
+When `CODEX_HOME` is set, it replaces `~/.codex` in these paths; user skills still
+live in `~/.agents/skills`. Existing Codex settings and unrelated skills or agents
+are preserved. Conflicting files, directories, and symlinks are moved to unique
+backup directories outside skill and agent discovery paths.
+
+Start a new Codex session after installation to load the global instructions and
+agent definitions.
 
 ---
 
@@ -66,8 +100,11 @@ cat ~/.claude/CLAUDE.md      # should show global instructions
 # Cursor
 ls ~/.cursor/rules            # should list *.mdc files
 
-# Codex
-cat ~/.codex/instructions.md  # should show global instructions
+# Codex (use $CODEX_HOME instead of ~/.codex if set)
+ls ~/.agents/skills                    # should list skill folders and shared
+cat ~/.codex/AGENTS.md                 # should show global instructions
+ls ~/.codex/ai-essentials/rules        # should list *.mdc files
+ls ~/.codex/agents                    # should list both *.toml agent definitions
 
 # Repo structure
 ./scripts/validate.sh
@@ -81,7 +118,7 @@ cat ~/.codex/instructions.md  # should show global instructions
 |------|-------------|
 | Claude Code | `node` for settings merge; bash |
 | Cursor | bash |
-| Codex CLI | bash |
+| Codex | bash, python3; a current Codex release with custom agent support |
 
 ---
 
@@ -94,7 +131,9 @@ git pull
 ./setup/install.sh --all
 ```
 
-Symlinks update automatically on pull. The Codex instructions file is a copy, so re-run `--codex` after changes to `codex/INSTRUCTIONS.md`.
+Symlinked instructions, rules, and existing skills update automatically on pull.
+Re-run `--codex` after adding skills or changing agent prompts or Codex agent metadata;
+the installer regenerates the native agent definitions.
 
 ---
 

@@ -49,7 +49,7 @@ Paths inside a skill resolve relative to that skill's own directory.
 
 | Task | Skill |
 |------|-------|
-| Marco's TS/React conventions | [skills/marco-code-style/SKILL.md](skills/marco-code-style/SKILL.md) — project-agnostic; derived from 748 authored commits |
+| Marco's TS/React conventions | [skills/marco-code-style/SKILL.md](skills/marco-code-style/SKILL.md) — project-agnostic; 748 authored commits, confirmed by a 69-question style interview. Depth behind the `rules/` code-style files |
 | Effect / ref / dependency discipline | [skills/react-patterns/SKILL.md](skills/react-patterns/SKILL.md) |
 | Test-first loop | [skills/tdd/SKILL.md](skills/tdd/SKILL.md) |
 | Multi-perspective code review | [skills/review-team/SKILL.md](skills/review-team/SKILL.md) |
@@ -66,6 +66,7 @@ Paths inside a skill resolve relative to that skill's own directory.
 | Dependency / bundle cost | [skills/dep-size/SKILL.md](skills/dep-size/SKILL.md) |
 | i18n sweep | [skills/i18n-sweep/SKILL.md](skills/i18n-sweep/SKILL.md) |
 | Distil memory from correction log | [skills/memory-distill/SKILL.md](skills/memory-distill/SKILL.md) |
+| Resolve merge conflicts | [skills/resolve-merge-conflicts/SKILL.md](skills/resolve-merge-conflicts/SKILL.md) |
 
 ## Agents (delegated workers)
 
@@ -80,7 +81,9 @@ Paths inside a skill resolve relative to that skill's own directory.
 
 ## Codex CLI specifics
 
-- [codex/INSTRUCTIONS.md](codex/INSTRUCTIONS.md) — global instructions (installed to `~/.codex/instructions.md`)
+- [codex/INSTRUCTIONS.md](codex/INSTRUCTIONS.md) — global instructions (symlinked to `~/.codex/AGENTS.md`), including rule routing
+- `skills/*/` — individually symlinked to `~/.agents/skills/`, with shared references
+- `codex/agents/*.toml` — native agent metadata, combined with `agents/*.md` into `~/.codex/agents/`
 
 ## Installation
 

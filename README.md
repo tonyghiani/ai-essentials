@@ -21,13 +21,13 @@ ai-essentials/
 
 The **content** is tool-agnostic plain Markdown. **File formats and install paths** differ by product:
 
-| Concept | This repo | Cursor | Claude Code | Codex / others |
+| Concept | This repo | Cursor | Claude Code | Codex |
 |---------|-----------|--------|-------------|----------------|
-| **Rules** | `rules/*.mdc` | `.cursor/rules/` or `~/.cursor/rules/` | `.claude/rules/` or `CLAUDE.md` | `AGENTS.md`, project instructions |
-| **Skills** | `skills/*/SKILL.md` | `.cursor/skills/` or `~/.cursor/skills/` | Project or user skills dir | Same pattern where supported |
-| **Agents** | `agents/*.md` | `.cursor/agents/` or `~/.cursor/agents/` | Subagent definitions | Custom system prompts / worker configs |
-| **Always-on rules** | `alwaysApply: true` in frontmatter | Auto-injected | Varies by tool | Paste into global instructions |
-| **File-scoped rules** | `globs:` in frontmatter | Activates when matching files are open | Tool-dependent | Manual `@` mention or project rules |
+| **Rules** | `rules/*.mdc` | `.cursor/rules/` or `~/.cursor/rules/` | `.claude/rules/` or `CLAUDE.md` | Referenced from `~/.codex/AGENTS.md` |
+| **Skills** | `skills/*/SKILL.md` | `.cursor/skills/` or `~/.cursor/skills/` | Project or user skills dir | `~/.agents/skills/` |
+| **Agents** | `agents/*.md` | `.cursor/agents/` or `~/.cursor/agents/` | Subagent definitions | Converted to `~/.codex/agents/*.toml` |
+| **Always-on rules** | `alwaysApply: true` in frontmatter | Auto-injected | Varies by tool | Included in global `AGENTS.md` |
+| **File-scoped rules** | `globs:` in frontmatter | Activates when matching files are open | Tool-dependent | Global instructions select rules by task and file type |
 
 `.mdc` frontmatter (`alwaysApply`, `globs`) is a Cursor convention. The rule **body** works anywhere: paste it into `AGENTS.md`, Claude project rules, or your tool's instruction file.
 
@@ -39,7 +39,7 @@ Skills reference each other with paths like `skills/review-team/SKILL.md`. Resol
 2. **Symlinked install** — if skills live at e.g. `~/.cursor/skills/ai-essentials/review-team/SKILL.md`, then `skills/review-pr/SKILL.md` resolves to `~/.cursor/skills/ai-essentials/review-pr/SKILL.md` (same parent directory as the skill you're running).
 3. **Unknown** — ask the user where they installed this repo.
 
-Run `./scripts/validate.sh` after edits to catch broken cross-references and skill name/folder mismatches.
+Run `./scripts/validate.sh` after edits. It catches broken cross-references, skill name/folder mismatches, over-broad React globs, and style claims that one file restates after another file overrode them.
 
 ---
 
@@ -72,7 +72,8 @@ Or per tool:
 ./setup/install.sh --codex
 ```
 
-Safe to re-run; existing files are backed up with `.bak`. See [SETUP.md](SETUP.md) for what each installer does, verification steps, and Windsurf/Copilot instructions.
+Safe to re-run. Codex backs up conflicts under `~/.codex/backups/ai-essentials/`;
+other installers use `.bak`. See [SETUP.md](SETUP.md) for install paths and verification.
 
 ### Option B — copy individual files
 
@@ -110,7 +111,7 @@ React rules target `*.{tsx,jsx}` and common frontend paths (`components/`, `hook
 
 The five code-style rules encode one author's conventions, confirmed by a 69-question interview against 40 merged PRs and five personal repositories. Each opens by deferring to project conventions. Swap the bodies for your own and the rest of the setup still works.
 
-Mechanical rules stay out of them and live in [`eslint-recommendations.md`](eslint-recommendations.md): prettier settings, `simple-import-sort` groups, and lint rules covering enums, `any`, naming casing, and test titles. That file is reference material, not installed anywhere.
+Mechanical rules stay out of them and live in [`eslint-recommendations.md`](eslint-recommendations.md): prettier settings, `simple-import-sort` groups, and lint rules covering enums, `any`, naming casing, and test titles. That file is reference material; Codex can read it through the installed repository link.
 
 ---
 
@@ -125,6 +126,7 @@ Reusable workflows the agent loads on demand. Each skill lives in its own folder
 | [`gh-issue-writer`](skills/gh-issue-writer/) | "write a GitHub issue", "gh issue" | Drafts formatted issue Markdown (does not create the issue) |
 | [`grill-me`](skills/grill-me/) | "grill me", "stress-test this plan" | Interviews you on a design until decisions are settled |
 | [`pr-description-template`](skills/pr-description-template/) | "write a PR description", "create a PR" | PR body from a fixed template; can create via `gh` |
+| [`resolve-merge-conflicts`](skills/resolve-merge-conflicts/) | "fix the conflicts", "merge main into this branch" | Merges the PR base, resolves conflicts by intent, verifies scoped checks, commits and pushes |
 | [`review-pr`](skills/review-pr/) | "review pr", share a PR URL | Reviews a GitHub PR with copy-pasteable line comments (uses personal voice profile by default) |
 | [`review-pr-comments`](skills/review-pr-comments/) | "should I accept this feedback" | Triages review comments against the PR diff (uses personal voice profile by default) |
 | [`review-team`](skills/review-team/) | "review team", "comprehensive review" | Runs 6 parallel reviewers and consolidates findings |
@@ -153,7 +155,10 @@ Specialist personas for delegated work (subagents, parallel workers, or focused 
 | [`marco-blogger.md`](agents/marco-blogger.md) | Personal blog voice; outputs MDX with frontmatter |
 | [`esql-expert.md`](agents/esql-expert.md) | ES\|QL queries for Elasticsearch (domain-specific) |
 
-Optional Cursor frontmatter fields (`model`, etc.) are ignored by other tools.
+The Codex installer combines each Markdown prompt with the matching metadata in
+`codex/agents/` to produce native TOML agents. Cursor/Claude frontmatter is stripped
+from the prompt; both agents inherit the parent model. Re-run `--codex` after
+changing a persona. See [SETUP.md](SETUP.md) for details.
 
 ---
 

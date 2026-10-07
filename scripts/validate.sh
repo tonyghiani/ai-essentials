@@ -53,6 +53,33 @@ for rule in "$ROOT"/rules/react-*.mdc; do
   fi
 done
 
+# Style claims the interview settled. A skill or rule restating an overridden claim
+# silently un-teaches the rule that replaced it, which no structural check catches.
+# Format: regex % why it is wrong now % path allowed to contain it
+STALE_CLAIMS=(
+  'not `jest\.mock`%mocking splits by target: hand-rolled fakes for services, jest.mock for own hook modules%'
+  '[Nn]o `user-event`%user-event is unresolved on purpose, not banned%'
+  'under ~4 props%props always get a named interface, even at one prop%skills/marco-code-style/SKILL.md'
+  'past ~2 arguments%single destructured object past one argument%skills/marco-code-style/SKILL.md'
+  'Open question, currently mixed%the interview settled every mixed case%'
+  'Both conventions coexist%the interview settled every mixed case%'
+)
+
+for entry in "${STALE_CLAIMS[@]}"; do
+  pattern="${entry%%%*}"
+  rest="${entry#*%}"
+  why="${rest%%%*}"
+  exempt="${rest#*%}"
+
+  while IFS= read -r hit; do
+    [[ -z "$hit" ]] && continue
+    [[ -n "$exempt" && "$hit" == "$exempt":* ]] && continue
+    err "Overridden style claim in $hit — $why"
+  done < <(grep -rnE "$pattern" \
+    "$ROOT/rules" "$ROOT/skills" "$ROOT/agents" "$ROOT/claude" "$ROOT/codex" "$ROOT/AGENTS.md" \
+    2>/dev/null | sed "s|^$ROOT/||")
+done
+
 if [[ "$ERRORS" -gt 0 ]]; then
   echo "" >&2
   echo "$ERRORS validation error(s)." >&2

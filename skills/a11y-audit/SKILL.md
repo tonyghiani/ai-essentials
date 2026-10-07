@@ -43,7 +43,7 @@ EUI components carry a lot of this already. The defects tend to appear where the
 - Custom CSS overriding EUI's focus styles
 - A hand-rolled dropdown or tooltip instead of `EuiPopover` / `EuiToolTip`
 
-Check `data-test-subj` presence too. Untestable UI is UI that regresses.
+Check the test id attribute is present too (`data-testid`, or whatever the project uses). Untestable UI is UI that regresses.
 
 ## Output
 

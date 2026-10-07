@@ -49,8 +49,9 @@ Repeat per behaviour. Do not batch five tests then implement; the loop's value i
 
 Follow `marco-code-style` for the full picture. The parts that matter most here:
 
-- **Hand-rolled stateful mock factories, not `jest.mock`.** Build a fake that round-trips: a `Map`-backed saved-objects client that throws NotFound until `create`, a management API that tracks `enabled` so pause→resume actually works. JSDoc each option.
-- **`renderHook`/`act`** for hooks, **`render`/`screen`** for components. No `user-event`.
+- **Hand-rolled stateful mock factories for services.** Build a fake that round-trips: a `Map`-backed saved-objects client that throws NotFound until `create`, a management API that tracks `enabled` so pause→resume actually works. JSDoc each option. `jest.mock` is for module-mocking your own hooks in component tests, and nothing else.
+- **`renderHook`/`act`** for hooks, **`render`/`screen`** for components.
+- Full variable names here too: `rulesClient`, not `rc`.
 - **Assert concrete values**, not snapshots. `expect.objectContaining` where partial matching is honest.
 - **Async via `.rejects`/`.resolves`**: `await expect(fn()).rejects.toMatchObject({ statusCode: 409 })`.
 - **Negative assertions pin the contract**: `expect(service.getStatus).not.toHaveBeenCalled()` proves the guard took the cheap path.

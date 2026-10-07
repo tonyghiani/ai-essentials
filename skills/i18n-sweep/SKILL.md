@@ -11,7 +11,7 @@ Two failure modes: strings that were never wrapped, and strings that were wrappe
 
 Scan for user-visible literals in JSX text, and in these props: `title`, `label`, `placeholder`, `aria-label`, `alt`, `description`, `helpText`, `tooltip`, `emptyMessage`, `confirmButtonText`, `cancelButtonText`, plus toast and error messages surfaced to the UI.
 
-Not findings: `data-test-subj`, `className`, ids, route paths, log messages, dev-only errors, and anything behind an internal flag no user sees.
+Not findings: test id attributes, `className`, ids, route paths, log messages, dev-only errors, and anything behind an internal flag no user sees.
 
 ## Defects that break translation
 

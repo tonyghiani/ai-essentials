@@ -1,6 +1,41 @@
 # Global instructions
 
-Source of truth: `ai-essentials/codex/INSTRUCTIONS.md`. Edit the repo file, then re-run `./setup/install.sh --codex`.
+Installed as `~/.codex/AGENTS.md`, symlinked to `ai-essentials/codex/INSTRUCTIONS.md`.
+Edits to this file are picked up by new Codex sessions.
+
+## Installed rules, skills, and agents
+
+The installer links the source repository at `~/.codex/ai-essentials`. If `CODEX_HOME`
+is set, use `$CODEX_HOME/ai-essentials` instead. Resolve the paths in this section
+against that installed repository, regardless of the current project directory.
+
+Always apply `rules/no-ai-prose.mdc` and `rules/numbered-replies.mdc`. Their core
+guidance is included below. Read the matching rule before editing these files:
+
+| Editing | Rule |
+|---------|------|
+| TypeScript or TSX | `rules/typescript-style.mdc` |
+| Adding files, folders, or imports | `rules/project-structure.mdc` |
+| Components or hooks | `rules/react-components.mdc` |
+| Server code, services, or routes | `rules/node-api-patterns.mdc` |
+| Tests | `rules/testing-style.mdc` |
+| React frontend code | `rules/react-avoid-effects.mdc`, `rules/react-effects-dependencies.mdc`, `rules/react-refs-dom.mdc` |
+
+The `.mdc` frontmatter describes scope; Codex follows the rule bodies through
+these instructions. Skip React rules for backend-only or config-only changes.
+Project conventions win where they conflict with personal code conventions.
+
+Skills are installed individually in `~/.agents/skills/`, including the `shared/`
+references used by review skills. Use the available skill when its description
+matches the task or the user names it. Resolve skill-relative paths from the skill's
+directory; resolve repo-style `skills/`, `rules/`, and `agents/` paths from the
+installed repository above. Read `eslint-recommendations.md` there when needed.
+
+Custom agents `esql-expert` and `marco-blogger` are installed in `~/.codex/agents/`
+(or `$CODEX_HOME/agents/`). Their prompts come from `agents/esql-expert.md` and
+`agents/marco-blogger.md`. Re-run `./setup/install.sh --codex` after changing agent
+prompts or adding skills. Both agents inherit the parent model and reasoning effort;
+the ES|QL agent uses a read-only filesystem sandbox.
 
 ## Writing: no AI prose
 

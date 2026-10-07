@@ -31,10 +31,11 @@ Options:
   --all          Install for all supported tools
   --claude-code  Symlink into ~/.claude/ (skills, agents, hooks, CLAUDE.md, settings)
   --cursor       Symlink rules into ~/.cursor/rules/ and skills into ~/.cursor/skills/
-  --codex        Copy codex/INSTRUCTIONS.md to ~/.codex/instructions.md
+  --codex        Install global instructions, skills, rule references, and custom agents
   --help         Show this message
 
-Safe to re-run. Existing files are backed up with a .bak suffix before replacement.
+Safe to re-run. Codex backs up conflicts under ~/.codex/backups/ai-essentials/;
+the other installers use a .bak suffix.
 EOF
 }
 

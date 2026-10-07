@@ -1,0 +1,4 @@
+# The installer adds developer_instructions from agents/esql-expert.md.
+name = "esql-expert"
+description = "Write, debug, and explain Elasticsearch ES|QL queries, including field discovery, aggregations, joins, and OTel data."
+sandbox_mode = "read-only"

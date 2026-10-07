@@ -1,0 +1,3 @@
+# The installer adds developer_instructions from agents/marco-blogger.md.
+name = "marco-blogger"
+description = "Write technical and lifestyle blog posts in Marco Ghiani's personal voice, with MDX frontmatter and working code examples."

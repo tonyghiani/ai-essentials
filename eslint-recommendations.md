@@ -6,6 +6,17 @@ never spends attention on something CI already enforces.
 
 Copy the blocks you need into a project's `eslint.config.mjs` and `.prettierrc.json`.
 
+**Verified by running, not by reading.** These rules were installed into `checkworld` and executed
+against its `src/`. Two corrections came out of that run and are already folded in below: global
+consts need `PascalCase` allowed (components and factories are consts), and `cx` needs an
+`id-length` exception (it is the classnames import name). The remaining 42 errors and 25 warnings
+were genuine violations, including six single-letter identifiers and ten brace-less guards.
+
+**Plugins most repos are missing.** `eslint-plugin-unicorn` for `no-for-loop` and `filename-case`,
+`eslint-plugin-jest` for the test-title rules, and `@typescript-eslint/{eslint-plugin,parser}` where
+a framework preset (such as `next/core-web-vitals`) bundles them without exposing them. Type-aware
+rules also need `parserOptions.projectService: true` plus `tsconfigRootDir`.
+
 ## Prettier
 
 Already shared verbatim by mountain-ui, mnt, and checkworld.
@@ -82,17 +93,22 @@ Each entry maps to a rule in `rules/typescript-style.mdc`, `rules/react-componen
 'unicorn/no-for-loop': 'error',
 'prefer-const': 'error',
 
-// Needs parserOptions.project for the boolean selector
-'@typescript-eslint/naming-convention': ['error',
+// Type-aware. Needs parserOptions.projectService (or project) for the boolean selector.
+// Start at 'warn': existing repos carry dozens of unprefixed declarations.
+'@typescript-eslint/naming-convention': ['warn',
   { selector: 'interface', format: ['PascalCase'], prefix: ['I'] },
   { selector: 'typeAlias', format: ['PascalCase'], prefix: ['T'] },
   { selector: 'variable', types: ['boolean'], format: ['PascalCase'],
     prefix: ['is', 'has', 'can', 'should', 'blocks'] },
+  // PascalCase is required here, not optional: components and factories are consts.
   { selector: 'variable', modifiers: ['const', 'global'],
-    format: ['UPPER_CASE', 'camelCase'] }
+    format: ['UPPER_CASE', 'camelCase', 'PascalCase'] }
 ],
 
-'id-length': ['error', { min: 3, exceptions: ['id', 'to', 'db', '_'] }],
+// `cx` is the conventional classnames import name, not a chosen identifier.
+'id-length': ['error', { min: 3, exceptions: ['id', 'to', 'db', '_', 'cx'] }],
+
+// Omit in published component libraries whose convention is PascalCase files.
 'unicorn/filename-case': ['error', { case: 'snakeCase' }],
 
 'no-unused-vars': 'off',
