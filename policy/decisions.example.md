@@ -11,6 +11,9 @@ A precedent is applied automatically only when all of these hold:
 3. Its `class` is not one of the always-ask classes (`ai-decisions classes`).
 4. `scope` is `global` or equals the current repo key.
 
+`record` is optional: the ADR a `brainstorm` session wrote for the decision (`ai-decisions add --record <path>`).
+Read it before applying the precedent when the situation is not an exact match.
+
 The plan gate (the breakdown the tech lead shows before fan-out) turns off per class after 5
 consecutive approved breakdowns with no edits. The counters live in the `## Gate` table at the end.
 
@@ -35,6 +38,7 @@ consecutive approved breakdowns with no edits. The counters live in the `## Gate
 - confirmations: 2
 - last-confirmed: 2026-10-12
 - contradicted: no
+- record: ~/brainstorms/2026-10-12-retry-strategy/adr.md
 
 ## Gate
 

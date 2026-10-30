@@ -61,6 +61,8 @@ Paths inside a skill resolve relative to that skill's own directory.
 | Branch refactor plan | [skills/branch-refactor-planner/SKILL.md](skills/branch-refactor-planner/SKILL.md) |
 | Architecture deep dive | [skills/deep-research/SKILL.md](skills/deep-research/SKILL.md) |
 | Plan stress-test | [skills/grill-me/SKILL.md](skills/grill-me/SKILL.md) |
+| Brainstorm options for a feature, architecture or topic | [skills/brainstorm/SKILL.md](skills/brainstorm/SKILL.md): sessions and ADRs in `~/brainstorms` |
+| Cited research on the web | [skills/web-research/SKILL.md](skills/web-research/SKILL.md) |
 | PR description | [skills/pr-description-template/SKILL.md](skills/pr-description-template/SKILL.md) |
 | GitHub issue draft | [skills/gh-issue-writer/SKILL.md](skills/gh-issue-writer/SKILL.md) |
 | API / contract review | [skills/api-contract-review/SKILL.md](skills/api-contract-review/SKILL.md) |

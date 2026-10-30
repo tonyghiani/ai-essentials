@@ -10,6 +10,8 @@ Interview the user relentlessly about every aspect of this plan until
 you reach a shared understanding. Walk down each branch of the design
 tree resolving dependencies between decisions one by one.
 
+When there is no plan yet, only a problem, run the `brainstorm` skill first and grill the option it ends with.
+
 ## How to ask
 
 Use numbered questions so the user can reply concisely (1, 2, 3 → matching

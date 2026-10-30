@@ -6,7 +6,7 @@
  *   match --class <c> [--scope <repo-key>]        precedents safe to apply automatically
  *   classes                                       print the always-ask classes, one per line
  *   gate <class> [<class> ...]                    print the plan-gate state; exit 0 only if all are off
- *   add --class <c> --situation <s> --decision <d> --why <w> [--scope <repo-key>] [--title <t>]
+ *   add --class <c> --situation <s> --decision <d> --why <w> [--scope <repo-key>] [--title <t>] [--record <adr path>]
  *   record --class <c> --outcome approved|edited|overruled [--precedent <id>]
  *
  * The file is policy/decisions.local.md (gitignored). AI_ESSENTIALS_DECISIONS
@@ -125,10 +125,10 @@ export function recordOutcome({ className, outcome, precedentId, today = new Dat
 }
 
 /**
- * @param {{ className: string, situation: string, decision: string, why: string, scope?: string, title?: string, today?: string }} options
+ * @param {{ className: string, situation: string, decision: string, why: string, scope?: string, title?: string, record?: string, today?: string }} options
  * @returns {import('./decisions_file.mjs').IPrecedent}
  */
-export function addPrecedent({ className, situation, decision, why, scope = 'global', title, today = new Date().toISOString().slice(0, 10) }) {
+export function addPrecedent({ className, situation, decision, why, scope = 'global', title, record, today = new Date().toISOString().slice(0, 10) }) {
   const file = loadDecisions();
   const highest = Math.max(0, ...file.precedents.map((precedent) => Number.parseInt(precedent.id.replace('D-', ''), 10) || 0));
   const precedent = {
@@ -142,6 +142,7 @@ export function addPrecedent({ className, situation, decision, why, scope = 'glo
     confirmations: 1,
     lastConfirmed: today,
     contradicted: 'no',
+    ...(record === undefined ? {} : { record }),
   };
   file.precedents.push(precedent);
   gateRow(file, className);
@@ -206,6 +207,7 @@ function main() {
         why: flagValue('--why') ?? usage('add needs --why'),
         scope: flagValue('--scope'),
         title: flagValue('--title'),
+        record: flagValue('--record'),
       });
       process.stdout.write(`${JSON.stringify(precedent, null, 2)}\n`);
       break;

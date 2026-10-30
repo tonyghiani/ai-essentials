@@ -19,6 +19,8 @@
         "./skills/explain-pr",
         "./skills/grill-me",
         "./skills/deep-research",
+        "./skills/brainstorm",
+        "./skills/web-research",
         "./skills/tdd",
         "./skills/branch-refactor-planner",
         "./skills/pr-description-template",

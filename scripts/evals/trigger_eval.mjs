@@ -62,6 +62,22 @@ export const TRIGGER_CASES = [
     nearMiss: 'What does sum in src/sum.js return when both arguments are 0?',
   },
   {
+    skill: 'brainstorm',
+    shouldTrigger: [
+      'Brainstorm with me: what are our options for caching the results of sum in src/sum.js?',
+      'Help me think through design alternatives for splitting src/ into packages. I have no plan yet.',
+    ],
+    nearMiss: 'Grill me on this plan: I want to replace REST polling with websockets. Keep asking until we agree.',
+  },
+  {
+    skill: 'web-research',
+    shouldTrigger: [
+      'Look online for current best practices on property-based testing in JavaScript and give me a cited report.',
+      'Research the state of the art in client-side caching for web apps and compare the main approaches.',
+    ],
+    nearMiss: 'Become the expert on this codebase before doing anything: deep dive into src/ and report back.',
+  },
+  {
     skill: 'tdd',
     shouldTrigger: [
       'Use tdd to add a multiply(a, b) function to src/sum.js.',

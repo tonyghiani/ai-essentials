@@ -320,6 +320,8 @@ Every skill works in any of the three tools. Say the name or what you want.
 
 | You want | Skill or agent | Notes |
 |---|---|---|
+| Explore options before there is a plan | `brainstorm` | Lens agents that can't see each other, blind ranking, pre-mortem, then an ADR. Sessions live in `~/brainstorms` (`AI_BRAINSTORMS_DIR` overrides); "resume the brainstorm on X" picks one up |
+| Cited research on anything outside the code | `web-research` | Perspectives first, parallel search, then a citation pass; reports go to `~/brainstorms/research` |
 | Think a plan through before any code | `grill-me` | Numbered questions with recommendations; add "write a spec" to get `SPEC.md` |
 | Understand an unfamiliar area first | `deep-research` | Reads docs and code, validates one against the other, asks when unclear |
 | Test-first on one change | `tdd` | Failing test, read the failure, minimal implementation, refactor |

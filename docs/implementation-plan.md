@@ -192,6 +192,11 @@ Each item names where it came from and where it lives. All of it is project-agno
 | Let auto memory deduplicate | Auto-dream (rolling out) | `memory-distill` routes to non-memory destinations when it is on |
 | Share the setup as a plugin | Thariq: internal marketplaces | `.claude-plugin/`, `bin/`, `claude/agents/` (rendered, drift-checked) |
 | Comprehension check before a PR leaves draft | Boris's merge quiz | `skills/explain-pr` |
+| Diverge before converging; diversity at initialisation, not debate | Diversity-collapse and debate-homogenisation papers (2026); Meta's divergent/convergent roundtable | `skills/brainstorm`: lens agents that never see each other |
+| Ask for several answers with probabilities to escape mode collapse | Verbalized Sampling (ICML 2026) | `brainstorm` lens output keeps ideas with `p` below 0.10 |
+| Anonymised ranking with order swapped | Karpathy's llm-council; position bias in pairwise judging | `brainstorm` phase 4 |
+| Perspectives first, then questions, then a separate citation check | Stanford STORM; Anthropic's multi-agent research system | `skills/web-research` |
+| Decisions recorded with fair rejected options | ADR practice; LLM ADR studies | `brainstorm` `adr-template.md`, `ai-decisions add --record` |
 
 ### Effort policy (2026-10-30)
 
@@ -201,7 +206,7 @@ Source: the claude.dev post "Spending your effort". Effort buys verification and
 |---|---|---|
 | low | Mechanical, self-checking work: drafting text, opening the PR, a CI round, quizzes, memory proposals, convention checks, the read-only triage | `effort: low` on `gh-issue-writer`, `pr-description-template`, `open-draft-pr`, `ci-babysit`, `explain-pr`, `memory-distill`; `convention-checker` agent; `ai-triage --effort` default |
 | medium | Everyday work and implementation | `effortLevel` in `claude/settings.reference.json`; `effort: medium` on `deliver` |
-| high | Verification, review, planning and interviews; unattended runs | `effort: high` on `tech-lead`, `grill-me`, `review-team`, `review-pr`; `reviewer`, `skeptic`, `judge` agents; `ai-delegate` and `ai-fanout --effort` default |
+| high | Verification, review, planning and interviews; unattended runs | `effort: high` on `tech-lead`, `grill-me`, `brainstorm`, `web-research`, `review-team`, `review-pr`; `reviewer`, `skeptic`, `judge` agents; `ai-delegate` and `ai-fanout --effort` default |
 | max | Opt-in only, for a hard fully autonomous build or a security audit | `ai-delegate --effort max`, or `/effort max` in a session |
 
 Pinned levels override the session default, so `/effort low` for a quick session does not weaken a review. Agent `effort` is rendered for Claude only; Codex and Cursor have no per-agent effort and inherit.

@@ -157,6 +157,7 @@ Reusable workflows the agent loads on demand. Each skill lives in its own folder
 
 | Skill | Trigger hints | What it does |
 |-------|---------------|--------------|
+| [`brainstorm`](skills/brainstorm/) | "brainstorm", "what are our options", "design alternatives" | Independent lens agents, blind ranking, pre-mortem; writes the session and an ADR to `~/brainstorms` |
 | [`branch-refactor-planner`](skills/branch-refactor-planner/) | "refactor plan", "clean up this branch" | Reviews branch diff vs base and produces a prioritized refactor plan |
 | [`deep-research`](skills/deep-research/) | "become the expert", "deep dive into" | Reads docs + code, produces a structured architecture report |
 | [`gh-issue-writer`](skills/gh-issue-writer/) | "write a GitHub issue", "gh issue" | Drafts formatted issue Markdown (does not create the issue) |
@@ -166,6 +167,7 @@ Reusable workflows the agent loads on demand. Each skill lives in its own folder
 | [`review-pr`](skills/review-pr/) | "review pr", share a PR URL | Reviews a GitHub PR with copy-pasteable line comments (uses personal voice profile by default) |
 | [`review-pr-comments`](skills/review-pr-comments/) | "should I accept this feedback" | Triages review comments against the PR diff (uses personal voice profile by default) |
 | [`review-team`](skills/review-team/) | "review team", "multi-perspective review" | Runs three to six read-only reviewers in parallel and consolidates findings |
+| [`web-research`](skills/web-research/) | "research", "look online", "best practices for" | Perspective agents search primary sources in parallel; a citation pass drops claims it cannot trace |
 
 Delivery skills (the delegation system; see [docs/guide.md](docs/guide.md)):
 

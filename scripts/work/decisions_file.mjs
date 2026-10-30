@@ -8,7 +8,8 @@
  *
  * @typedef {{
  *   id: string, title: string, class: string, situation: string, decision: string,
- *   why: string, scope: string, confirmations: number, lastConfirmed: string, contradicted: string
+ *   why: string, scope: string, confirmations: number, lastConfirmed: string, contradicted: string,
+ *   record?: string
  * }} IPrecedent
  * @typedef {{ class: string, count: number, gate: 'on' | 'off' }} IGateRow
  * @typedef {{ preamble: string, precedents: IPrecedent[], gate: IGateRow[] }} IDecisionFile
@@ -16,7 +17,8 @@
 
 const PRECEDENTS_HEADING = '## Precedents';
 const GATE_HEADING = '## Gate';
-const FIELD_ORDER = ['class', 'situation', 'decision', 'why', 'scope', 'confirmations', 'last-confirmed', 'contradicted'];
+// `record` is optional: the path of the ADR a brainstorm wrote for the decision.
+const FIELD_ORDER = ['class', 'situation', 'decision', 'why', 'scope', 'confirmations', 'last-confirmed', 'contradicted', 'record'];
 
 /**
  * @param {string} text
@@ -56,6 +58,7 @@ export function parseDecisions(text) {
         confirmations: Number.parseInt(fields.confirmations ?? '0', 10) || 0,
         lastConfirmed: fields['last-confirmed'] ?? '',
         contradicted: fields.contradicted ?? 'no',
+        ...(fields.record === undefined ? {} : { record: fields.record }),
       };
     });
 
@@ -83,8 +86,11 @@ export function serializeDecisions({ preamble, precedents, gate }) {
       confirmations: String(precedent.confirmations),
       'last-confirmed': precedent.lastConfirmed,
       contradicted: precedent.contradicted,
+      record: precedent.record,
     };
-    const bullets = FIELD_ORDER.map((key) => `- ${key}: ${values[key]}`).join('\n');
+    const bullets = FIELD_ORDER.filter((key) => values[key] !== undefined)
+      .map((key) => `- ${key}: ${values[key]}`)
+      .join('\n');
     return `### ${precedent.id} ${precedent.title}\n${bullets}\n`;
   });
   const rows = gate.map((row) => `| ${row.class} | ${row.count} | ${row.gate} |`).join('\n');
