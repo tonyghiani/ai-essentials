@@ -186,6 +186,12 @@ export function mergeClaudeSettings(live, reference) {
       merged[key] = structuredClone(reference[key]);
     }
   }
+  // Defaults, not policy: set once, then yours to change (with /autocompact or by hand).
+  for (const key of ['autoCompactWindow']) {
+    if (key in reference && !(key in merged)) {
+      merged[key] = structuredClone(reference[key]);
+    }
+  }
   merged.hooks = mergeGroupedHooks(merged.hooks, reference.hooks);
 
   return merged;

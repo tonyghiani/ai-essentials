@@ -58,6 +58,8 @@ export function checkLinks(home) {
     [join(home, '.local', 'bin', 'ai-decisions'), join(REPO, 'scripts', 'work', 'decisions.mjs')],
     [join(home, '.local', 'bin', 'ai-pr-body'), join(REPO, 'scripts', 'work', 'pr_body.mjs')],
     [join(home, '.local', 'bin', 'ai-audit'), join(REPO, 'scripts', 'guard', 'audit_branch.mjs')],
+    [join(home, '.local', 'bin', 'ai-checkup'), join(REPO, 'scripts', 'checkup', 'checkup.mjs')],
+    [join(home, '.local', 'bin', 'ai-triage'), join(REPO, 'scripts', 'triage.sh')],
     [join(home, '.claude', 'skills'), join(REPO, 'skills')],
     [join(home, '.claude', 'hooks'), join(REPO, 'claude', 'hooks')],
     [join(home, '.claude', 'CLAUDE.md'), join(REPO, 'claude', 'CLAUDE.md')],
@@ -116,6 +118,9 @@ export function checkConfigs(home) {
     ['PreToolUse', 'guard-git'],
     ['PostToolUse', 'format-on-edit'],
     ['UserPromptSubmit', 'log-correction-signal'],
+    ['SessionStart', 'session-context'],
+    ['PreToolUse', 'log-skill-use'],
+    ['UserPromptExpansion', 'log-skill-use'],
   ]) {
     checks.push(check(`claude: ${event} runs ${script}`, hasGroupedHook(claude?.hooks, event, script), 'not registered in ~/.claude/settings.json'));
   }
@@ -146,6 +151,7 @@ export function checkConfigs(home) {
     ['PreToolUse', 'guard-git'],
     ['PostToolUse', 'format-on-edit'],
     ['UserPromptSubmit', 'log-correction-signal'],
+    ['SessionStart', 'session-context'],
   ]) {
     checks.push(check(`codex: ${event} runs ${script}`, hasGroupedHook(codexHooks?.hooks, event, script), 'not registered in ~/.codex/hooks.json'));
   }
@@ -224,7 +230,7 @@ export function checkState(home) {
 /** @returns {ICheck[]} Steps no script can do or verify. */
 export function manualSteps() {
   return [
-    { status: 'WARN', label: 'codex: trust the hooks', detail: 'open Codex once, run /hooks, review and trust the four ai-essentials hooks; project hooks never run untrusted' },
+    { status: 'WARN', label: 'codex: trust the hooks', detail: 'open Codex once, run /hooks, review and trust the five ai-essentials hooks; project hooks never run untrusted' },
     { status: 'WARN', label: 'cursor: attribution toggles', detail: 'Cursor Settings: turn off Commit Attribution and PR Attribution; the config keys come from forum reports, not docs' },
     { status: 'WARN', label: 'cursor: test the hooks in the app', detail: 'the Cursor CLI is not installed here, so hook payloads follow the docs; trigger one and check ~/.ai-essentials/state/hook-errors.jsonl' },
   ];

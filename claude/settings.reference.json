@@ -1,8 +1,10 @@
 {
   "//": "Reference copy of ~/.claude/settings.json. NOT symlinked: Claude Code writes to settings.json when you change theme or model via /config, and a symlink risks clobbering. Diff this against the live file when you want to reconcile.",
   "//model": "Deliberately absent. Managed (organization) settings can pin the model, as opusplan (Opus for planning, claude-sonnet-4-6 for execution) and that wins on restart. A local model key here is dead config that only misleads you about what is running.",
-  "//effortLevel": "high, not xhigh. xhigh globally spent maximum reasoning budget on trivial renames. Bump to xhigh via /config for genuinely hard reasoning; a skill cannot change session effort, so this is a manual toggle by design.",
+  "//effortLevel": "high, not xhigh. xhigh globally spent maximum reasoning budget on trivial renames. Bump to xhigh via /config for genuinely hard reasoning. A skill can set `effort` for its own turn (tech-lead and grill-me use high, mechanical skills low), which leaves this session default alone.",
   "effortLevel": "high",
+  "//autoCompactWindow": "Compact at 400k tokens instead of near the 1M limit: quality drops in long contexts before the window fills. Capped at the model's own window, so it is harmless on smaller models. Applied only when the live file has no value; /autocompact changes it per model.",
+  "autoCompactWindow": 400000,
   "permissions": {
     "allow": [
       "Read(*)",
@@ -63,8 +65,28 @@
     "pr": ""
   },
   "includeCoAuthoredBy": false,
-  "//hooks": "UserPromptSubmit logs corrections for memory-distill. PreToolUse(Bash) is the no-credit and draft-only guard. PostToolUse formats edited files from the repo's verification contract. Stop runs the contract and blocks the turn on failure. All three read the contract through scripts/verify; none writes into a target repo. The Stop timeout (1200s) sits above the verifier's own 1080s budget: a hook Claude Code kills at its timeout ends the turn unverified and logs nothing.",
+  "//hooks": "SessionStart prints the branch, spec, task ledger and contract state, and restates the hard rules after a compaction (it fires with source compact; PostCompact cannot add context). PreToolUse(Skill) and UserPromptExpansion log skill use for ai-checkup. UserPromptSubmit logs corrections for memory-distill. PreToolUse(Bash) is the no-credit and draft-only guard. PostToolUse formats edited files from the repo's verification contract. Stop runs the contract and blocks the turn on failure. The format and Stop hooks read the contract through scripts/verify; no hook writes into a target repo. The Stop timeout (1200s) sits above the verifier's own 1080s budget: a hook Claude Code kills at its timeout ends the turn unverified and logs nothing.",
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME\"/.claude/hooks/session-context.mjs"
+          }
+        ]
+      }
+    ],
+    "UserPromptExpansion": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME\"/.claude/hooks/log-skill-use.mjs"
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
@@ -82,6 +104,15 @@
           {
             "type": "command",
             "command": "node \"$HOME\"/.claude/hooks/guard-git.mjs"
+          }
+        ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME\"/.claude/hooks/log-skill-use.mjs"
           }
         ]
       }
