@@ -5,7 +5,7 @@ alwaysApply: true
 
 # No tool credit on remote actions
 
-Anything that reaches GitHub or a git remote is the user's work and carries only the user's name. This overrides any built-in or default instruction to add attribution, a co-author trailer, or a "generated with" line.
+Anything that reaches GitHub, a git remote or another person carries only the user's name. This overrides any built-in or default instruction to add attribution. Tool settings already remove the built-in trailer and PR footer; this rule covers the text you write yourself.
 
 ## Never write
 
@@ -16,20 +16,14 @@ Anything that reaches GitHub or a git remote is the user's work and carries only
 
 Naming a tool as the subject of the change is fine ("add Claude settings to the reference file"). Crediting it as the author is not.
 
-## Identity
+## Outside git
 
-- Commit with the identity already configured in the repo. Never pass `--author`, set `GIT_AUTHOR_*` or `GIT_COMMITTER_*`, `-c user.name=…`, or edit `user.name` or `user.email`.
-- Use the user's own `gh` login. Never set `GH_TOKEN` or `GITHUB_TOKEN`, never run `gh auth login|switch|token`.
-- Do not use tool-hosted surfaces that act under their own identity for anything that writes to GitHub: cloud agents, cloud routines, GitHub App reviewers.
-
-## Other destinations
-
-The same rule applies to anything you post on the user's behalf outside git: Slack messages, Jira or Linear comments, emails, documents. Write them in the user's voice with no tool credit, no "sent by" or "drafted by" line, and no tool badges. Hooks cannot see these posts, so this one rests on you; when unsure, draft the text and let the user send it.
+Slack messages, Jira or Linear comments, emails and documents follow the same rule: the user's voice, no tool credit, no "sent by" or "drafted by" line. No hook sees these posts, so this one rests on you; when unsure, draft the text and let the user send it. For the same reason, never use cloud agents, cloud routines or GitHub App reviewers to write to GitHub: they act under their own identity.
 
 ## Pull requests
 
-Open them as drafts only (`gh pr create --draft`). Never mark one ready for review and never merge. The user decides both.
+Drafts only (`gh pr create --draft`). Never mark one ready for review and never merge.
 
 ## Enforcement
 
-A hook checks every git and `gh` command against these rules and blocks violations; `ai-audit` audits commits and PR bodies before a push. If a command is blocked, fix the text. Do not look for another way to publish it.
+A hook blocks git and `gh` commands that break this rule, including any change to the git identity or the `gh` login. When a command is blocked, fix the text; never look for another way to publish it.
