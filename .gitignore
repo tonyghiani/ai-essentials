@@ -1,0 +1,16 @@
+# Claude Desktop skill sync writes these through the ~/.claude/skills symlink
+skills/synced/
+skills/.trash/
+
+# Private to this machine: per-repo contracts and decision precedents may name
+# internal projects, and this repository is public
+contracts/*.json
+!contracts/example.json
+policy/*.local.md
+policy/*.local.json
+
+# Python bytecode from setup/render_agents.py and its tests
+__pycache__/
+
+# Runtime state lives in ~/.ai-essentials/state, never here
+.ai-essentials/
