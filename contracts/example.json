@@ -24,5 +24,11 @@
     "when": ["**/*.{ts,tsx,json,md}"]
   },
   "worktree": { "copy": [".env"] },
-  "app": { "run": "npm run dev" }
+  "app": {
+    "run": ["npm", "run", "dev", "--", "--port", "{port}"],
+    "url": "http://localhost:3000",
+    "ready": "/",
+    "readyTimeoutSec": 120,
+    "ports": [3000]
+  }
 }

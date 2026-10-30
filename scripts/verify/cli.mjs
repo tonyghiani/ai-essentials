@@ -7,14 +7,19 @@
  *   node scripts/verify/cli.mjs --where [--cwd <dir>]   print the repo key and contract path
  *   node scripts/verify/cli.mjs --worktree-copy [--cwd <dir>]   print the files a new worktree needs, one per line
  *   node scripts/verify/cli.mjs --worktree-setup [--cwd <dir>]  run the contract's worktree.setup commands in <dir>
+ *   node scripts/verify/cli.mjs --app-status [--cwd <dir>]      JSON: is the app up, and which checkout serves it
+ *   node scripts/verify/cli.mjs --app-start [--force-new --port <n>] [--cwd <dir>]  JSON: start this checkout's app
+ *   node scripts/verify/cli.mjs --app-stop [--cwd <dir>]        JSON: stop the instance --app-start started
  *
- * Exit 0 for pass or skipped, 1 for fail or escalate.
+ * Exit 0 for pass or skipped, 1 for fail or escalate. The app flags exit 1 when
+ * the app is not configured, a start is refused or fails, or there is nothing to stop.
  */
 
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { keyToFileName, repoKey, repoRoot } from '../lib/repo.mjs';
+import { appStart, appStatus, appStop } from './app.mjs';
 import { contractsDir, resolveContract, trustContract } from './contract.mjs';
 import { runVerify } from './run.mjs';
 
@@ -31,6 +36,33 @@ function flagValue(flag) {
 const DEFAULT_SETUP_TIMEOUT_SEC = 900;
 
 const cwd = flagValue('--cwd') ?? process.cwd();
+
+/** Statuses after which the caller can go on; anything else exits 1. */
+const APP_OK_STATUSES = new Set(['running-here', 'running-elsewhere', 'running-unknown', 'stopped', 'started', 'already-exited']);
+
+/** @param {{ status: string }} result */
+function printAppResult(result) {
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  process.exit(APP_OK_STATUSES.has(result.status) ? 0 : 1);
+}
+
+if (process.argv.includes('--app-status')) {
+  printAppResult(await appStatus({ cwd }));
+}
+
+if (process.argv.includes('--app-start')) {
+  const portValue = flagValue('--port');
+  const port = portValue === undefined ? undefined : Number(portValue);
+  if (port !== undefined && !(Number.isInteger(port) && port > 0 && port < 65_536)) {
+    process.stderr.write(`--port needs a TCP port number, got ${portValue}\n`);
+    process.exit(1);
+  }
+  printAppResult(await appStart({ cwd, forceNew: process.argv.includes('--force-new'), port }));
+}
+
+if (process.argv.includes('--app-stop')) {
+  printAppResult(await appStop({ cwd }));
+}
 
 if (process.argv.includes('--worktree-setup')) {
   const root = repoRoot(cwd);

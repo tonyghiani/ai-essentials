@@ -11,7 +11,11 @@
  * @typedef {{ name: string, cmd: string[], when?: string[], timeoutSec?: number }} ICheck
  * @typedef {{ cmd: string[], when?: string[], timeoutSec?: number }} IFormat
  * @typedef {{ cmd: string[], timeoutSec?: number }} ISetupStep
- * @typedef {{ checks: ICheck[], format?: IFormat, worktree?: { copy?: string[], setup?: ISetupStep[] }, app?: { run?: string } }} IContract
+ * @typedef {{ run?: string[] | string, url?: string, ready?: string, readyTimeoutSec?: number, ports?: number[] }} IAppConfig
+ *   How to see a change in the running app. `run` is an argv like a check's cmd and may hold a
+ *   `{port}` element; a string `run` is the older descriptive form, kept valid but never executed.
+ *   `ready` is a path under `url`, or a full URL, that answers 2xx or 3xx once the app is up.
+ * @typedef {{ checks: ICheck[], format?: IFormat, worktree?: { copy?: string[], setup?: ISetupStep[] }, app?: IAppConfig }} IContract
  *
  * @typedef {{ status: 'none' }
  *   | { status: 'untrusted', path: string }
@@ -74,6 +78,52 @@ function timeoutProblem(timeoutSec, label) {
 
 /**
  * @param {unknown} value
+ * @returns {boolean}
+ */
+function isHttpUrl(value) {
+  try {
+    return typeof value === 'string' && ['http:', 'https:'].includes(new URL(value).protocol);
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Checked by verify-app when it loads the block, not by contractProblem, so a
+ * bad app block never fails the Stop hook. A string `run` stays valid: contracts
+ * written before `run` became an argv hold one.
+ *
+ * @param {unknown} app
+ * @returns {string | null}
+ */
+export function appProblem(app) {
+  if (!isRecord(app)) {
+    return 'app must be an object';
+  }
+  if (app.run !== undefined && typeof app.run !== 'string' && (!isStringArray(app.run) || app.run.length === 0)) {
+    return 'app.run must be a non-empty array of strings';
+  }
+  if (app.url !== undefined && !isHttpUrl(app.url)) {
+    return 'app.url must be an http(s) URL';
+  }
+  if (app.ready !== undefined && !(typeof app.ready === 'string' && (app.ready.startsWith('/') || isHttpUrl(app.ready)))) {
+    return 'app.ready must be a path starting with / or an http(s) URL';
+  }
+  if (typeof app.ready === 'string' && app.ready.startsWith('/') && app.url === undefined) {
+    return 'app.ready is a path, so app.url is needed to resolve it';
+  }
+  if (app.readyTimeoutSec !== undefined && !(typeof app.readyTimeoutSec === 'number' && Number.isFinite(app.readyTimeoutSec) && app.readyTimeoutSec > 0)) {
+    return 'app.readyTimeoutSec must be a positive number of seconds';
+  }
+  const isPort = (port) => Number.isInteger(port) && port > 0 && port < 65_536;
+  if (app.ports !== undefined && !(Array.isArray(app.ports) && app.ports.every(isPort))) {
+    return 'app.ports must be an array of TCP port numbers';
+  }
+  return null;
+}
+
+/**
+ * @param {unknown} value
  * @returns {string | null} A problem description, or null when the contract is valid.
  */
 export function contractProblem(value) {
@@ -108,6 +158,8 @@ export function contractProblem(value) {
       }
     }
   }
+  // The app block is not checked here: no Stop-hook check uses it, and a typo in it would otherwise
+  // make the whole contract invalid and fail every turn in the repo. verify-app reports it instead.
   if (value.format !== undefined) {
     if (!isRecord(value.format)) {
       return 'format must be an object';

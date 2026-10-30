@@ -25,7 +25,7 @@ prints the repo key, which contract applies (if any), and the path to create. A 
 
 ### 1. Find what the repo already knows
 
-Read, do not guess: `package.json` scripts, `Makefile`, `pyproject.toml`, `Cargo.toml`, CI config, `CONTRIBUTING`, project docs, and any agent instructions in the repo. Look for four things: typecheck, lint, test, format. Also note how to run the app and which untracked files a fresh worktree needs (`.env`).
+Read, do not guess: `package.json` scripts, `Makefile`, `pyproject.toml`, `Cargo.toml`, CI config, `CONTRIBUTING`, project docs, and any agent instructions in the repo. Look for four things: typecheck, lint, test, format. Also note how to run the app (its start command, URL and port) and which untracked files a fresh worktree needs (`.env`).
 
 ### 2. Scope each check to the change
 
@@ -54,9 +54,38 @@ Show the user the proposed JSON and the exact commands. These commands run autom
   ],
   "format": { "cmd": ["<formatter>", "{file}"], "when": ["**/*.{ts,tsx,json,md}"] },
   "worktree": { "copy": [".env"] },
-  "app": { "run": "<how to start the app>" }
+  "app": {
+    "run": ["<start command>", "<args>", "{port}"],
+    "url": "http://localhost:<port>",
+    "ready": "/<health path>",
+    "readyTimeoutSec": 180,
+    "ports": [<port>]
+  }
 }
 ```
+
+### 3b. Propose the app block
+
+The `app` block lets the `verify-app` skill find a running instance, tell which checkout it serves, and start one when nothing runs. Skip it for a library with nothing to run, and say so.
+
+Find the candidates, then ask; never pick silently:
+
+- Start command: `package.json` scripts (`dev`, `start`, `serve`), `Makefile` targets, `Procfile` / `Procfile.dev`, `docker-compose.yml`, and the repo's README or contributing guide.
+- URL and port: the dev server's config, `.env.example`, or the README. A port hardcoded in one of those is a guess until the user confirms it.
+
+Ask the user, numbered, with your recommendation for each: 1. which command starts the app for local development; 2. its base URL; 3. a path that answers 2xx or 3xx only once the app is up (a health or status route beats `/`, which can answer before the app is usable); 4. how long a cold start takes.
+
+| Field | Meaning |
+|---|---|
+| `run` | argv like a check's `cmd`, run from the checkout root. `{root}` and `{port}` are whole elements; `PORT` is also set in the environment. Without a way to pass the port, a second checkout can never start beside a running one. |
+| `url` | base URL the app serves on |
+| `ready` | path under `url`, or a full URL; defaults to `url` |
+| `readyTimeoutSec` | how long a start may take before it is reported as a timeout (default 180) |
+| `ports` | TCP ports the app listens on, used to find which process and checkout serve it; a local `url`'s port is included automatically |
+
+An older contract may hold `run` as a shell string. It stays valid, but `ai-verify --app-start` refuses to run it; rewrite it as an argv.
+
+Prove it once the user approves: `ai-verify --app-status` with the app stopped prints `stopped`, and with it running from this checkout prints `running-here`.
 
 ### 4. Write and prove it
 
@@ -74,3 +103,10 @@ runs the gate by hand the way the Stop hook does.
 - Never add a check the user did not approve.
 - A flaky check is worse than none: it teaches the agent to retry. Leave it out and say why.
 - Update the contract when a command changes; a stale command fails every turn.
+
+## Gotchas
+
+- Commands are argv arrays, never shell strings: a string `cmd` makes the contract invalid, and the Stop hook then fails every turn until it is fixed. A string `app.run` is the legacy form; it validates but `ai-verify --app-start` will not run it.
+- All checks share one time budget (18 minutes) under the Stop hook's timeout. A whole-repo check that takes longer fails as "not run"; scope it with `{files}` or `{dirs}`.
+- A check whose `{files}` placeholder matches nothing is skipped, so a wrong `when` glob looks like a pass. Test each glob against a real changed file.
+- A repo-owned `.ai/verify.json` runs only after `ai-verify --trust`, and stops being trusted when its content changes.
