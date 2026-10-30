@@ -28,10 +28,18 @@ Code that is `~/.claude/skills/review-team/`, so `reviewers/adversarial.md`
 resolves to `~/.claude/skills/review-team/reviewers/adversarial.md`. If a read
 fails, `ls` the skill directory rather than guessing.
 
+## When to use, and when not to
+
+Six reviewers in parallel cost several times a single review. Use this skill when the user asks for it, or when the tech-lead skill finds a large or risky change: roughly 400 or more changed lines, or a change in an always-ask class (the always-ask classes). For the inner loop of a delivery use the `reviewer` and `convention-checker` agents instead; they are cheaper and read-only.
+
+## Reviewer selection
+
+Launch only the reviewers the diff calls for. Skip **Observability Expert** unless the diff touches logging, metrics, tracing, telemetry or ES|QL and Elasticsearch queries. Skip **Product Flow** for changes with no user-visible behaviour. Say which you skipped and why. Wherever this file says "6 reviewers", read "the selected reviewers".
+
 ## Mode detection
 
 - **Branch review** (default): user says "review team", "review my changes", "comprehensive review"
-- **Scoped review**: user provides a target path or project name, e.g. "review team the streams plugin", "review team src/core/packages/http"
+- **Scoped review**: user provides a target path or project name, e.g. "review team the billing module", "review team src/api/http"
 - **Plan review**: user says "review team plan", "review this plan", or attaches a plan document
 
 When the user provides a scope, use **scoped review**. When no scope is given

@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+# Run one task headlessly in its own git worktree, with caps, then audit the result. The task is a
+# ticket, an issue link, or just a description. Installed on the PATH as `ai-delegate`.
+#
+# Usage:
+#   ai-delegate --tool claude|codex|cursor [--repo DIR] [--slug NAME] [--base REF]
+#                       [--max-turns N] [--budget-usd X] [--timeout-min M] <ticket text | @file>
+#   ai-delegate --remove --repo DIR --slug NAME
+#
+# The worktree is created from the repo in --repo (default: the current directory), beside that repo
+# (<repo>.worktrees/<slug>, or $AI_WORKTREES_DIR), on a new branch named <github-login>/<slug>, recorded as the agent's. Nothing is pushed and no PR is
+# opened: the run leaves a worktree for you to review, and prints a JSON summary.
+#
+# Commits are checked by a commit-msg hook scoped to the run (see below), in any tool.
+#
+# Caps: Claude Code gets --max-turns and --max-budget-usd. Codex and Cursor (binary: agent) have
+# neither flag, so the wrapper enforces --timeout-min with perl's alarm (macOS has no `timeout`).
+# Cursor needs its `agent` CLI (see cursor.com/docs/cli) and CURSOR_API_KEY or a login; its flags
+# follow Cursor's docs and are untested against a real install on this machine.
+#
+# Test seam: AI_ESSENTIALS_TOOL_CMD replaces the tool invocation with any command, run inside
+# the worktree with the prompt in $AI_ESSENTIALS_PROMPT. Its stdout goes to stderr, so the JSON summary
+# on stdout stays the only thing this script prints.
+set -euo pipefail
+
+# Resolve symlinks, so the script finds the rest of ai-essentials when it is run through the
+# ai-delegate / ai-fanout links the installer puts on the PATH.
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+HERE="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+REPO_HOME="$(cd "$HERE/.." && pwd)"
+WORK_CLI=(node "$REPO_HOME/scripts/work/cli.mjs")
+VERIFY_CLI=(node "$REPO_HOME/scripts/verify/cli.mjs")
+AUDIT=(node "$REPO_HOME/scripts/guard/audit_branch.mjs")
+
+TOOL="" REPO="$PWD" SLUG="" BASE="" MAX_TURNS=40 BUDGET_USD=10 TIMEOUT_MIN=45 TIMEOUT_SEC="" REMOVE=false TICKET=""
+
+die() { printf 'delegate: %s\n' "$*" >&2; exit 1; }
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --tool) TOOL="$2"; shift 2 ;;
+    --repo) REPO="$2"; shift 2 ;;
+    --slug) SLUG="$2"; shift 2 ;;
+    --base) BASE="$2"; shift 2 ;;
+    --max-turns) MAX_TURNS="$2"; shift 2 ;;
+    --budget-usd) BUDGET_USD="$2"; shift 2 ;;
+    --timeout-min) TIMEOUT_MIN="$2"; shift 2 ;;
+    --timeout-sec) TIMEOUT_SEC="$2"; shift 2 ;;
+    --remove) REMOVE=true; shift ;;
+    -h|--help) sed -n '2,19p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    *) TICKET="$1"; shift ;;
+  esac
+done
+
+ROOT="$(git -C "$REPO" rev-parse --show-toplevel 2>/dev/null)" || die "$REPO is not inside a git repository"
+# Name things after the main checkout, even when --repo points inside one of its worktrees.
+COMMON_DIR="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)"
+if [[ "$(basename "$COMMON_DIR")" == .git ]]; then MAIN="$(dirname "$COMMON_DIR")"; else MAIN="$ROOT"; fi
+REPO_NAME="$(basename "$MAIN")"
+STATE="${AI_ESSENTIALS_STATE:-$HOME/.ai-essentials/state}"
+# Worktrees live beside the repo they belong to, where your own worktrees would: ~/code/app gets
+# ~/code/app.worktrees/<slug>. Nothing about them lives in ai-essentials. AI_WORKTREES_DIR overrides.
+WORKTREES="${AI_WORKTREES_DIR:-$(dirname "$MAIN")/$REPO_NAME.worktrees}"
+
+slugify() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g' | cut -c1-40; }
+
+if [[ "$REMOVE" == true ]]; then
+  [[ -n "$SLUG" ]] || die "--remove needs --slug"
+  git -C "$ROOT" worktree remove --force "$WORKTREES/$(slugify "$SLUG")"
+  printf 'removed %s\n' "$WORKTREES/$(slugify "$SLUG")"
+  exit 0
+fi
+
+[[ -n "$TOOL" || -n "${AI_ESSENTIALS_TOOL_CMD:-}" ]] || die "--tool claude|codex|cursor is required"
+[[ -n "$TICKET" ]] || die "a task (text or @file) is required"
+[[ "$TICKET" == @* ]] && TICKET="$(cat "${TICKET#@}")"
+[[ -n "$SLUG" ]] || SLUG="$(printf '%s' "$TICKET" | head -1 | cut -c1-60)"
+SLUG="$(slugify "$SLUG")"
+[[ -n "$SLUG" ]] || die "could not derive a slug; pass --slug"
+
+LOGIN="$("${WORK_CLI[@]}" login 2>/dev/null || true)"
+BRANCH="${LOGIN:+$LOGIN/}$SLUG"
+WORKTREE="$WORKTREES/$SLUG"
+BASE="${BASE:-$(git -C "$ROOT" rev-parse --abbrev-ref HEAD)}"
+[[ ! -e "$WORKTREE" ]] || die "$WORKTREE already exists; remove it or pick another --slug"
+mkdir -p "$WORKTREES"
+
+git -C "$ROOT" worktree add -q -b "$BRANCH" "$WORKTREE" "$BASE"
+"${WORK_CLI[@]}" register "$BRANCH" --base "$BASE" --cwd "$WORKTREE" >/dev/null
+
+# Files the contract says a fresh worktree needs (for example .env), copied from the main checkout.
+while IFS= read -r file; do
+  [[ -n "$file" && -e "$ROOT/$file" ]] || continue
+  mkdir -p "$WORKTREE/$(dirname "$file")"
+  cp -p "$ROOT/$file" "$WORKTREE/$file"
+done < <("${VERIFY_CLI[@]}" --worktree-copy --cwd "$ROOT")
+
+# A commit-msg hook scoped to this run, so a commit that credits a tool is refused at commit time in
+# any tool, with no hook trust step. It is set through GIT_CONFIG_* for the tool process only, so the
+# repo's own config is never touched. The repo's existing hooks (core.hooksPath or .git/hooks) are
+# wrapped, not replaced: each runs as before, and its commit-msg runs after ours.
+ORIG_HOOKS="$(git -C "$WORKTREE" config --get core.hooksPath || true)"
+if [[ -z "$ORIG_HOOKS" ]]; then
+  ORIG_HOOKS="$(git -C "$WORKTREE" rev-parse --path-format=absolute --git-common-dir)/hooks"
+elif [[ "$ORIG_HOOKS" != /* ]]; then
+  ORIG_HOOKS="$WORKTREE/$ORIG_HOOKS"
+fi
+RUN_HOOKS="$STATE/run-hooks/$REPO_NAME-$SLUG"
+rm -rf "$RUN_HOOKS"; mkdir -p "$RUN_HOOKS"
+for original in "$ORIG_HOOKS"/*; do
+  name="$(basename "$original")"
+  [[ -f "$original" && -x "$original" && "$name" != commit-msg && "$name" != *.sample ]] || continue
+  printf '#!/usr/bin/env bash\nexec "%s" "$@"\n' "$original" > "$RUN_HOOKS/$name"
+  chmod +x "$RUN_HOOKS/$name"
+done
+cat > "$RUN_HOOKS/commit-msg" <<HOOK
+#!/usr/bin/env bash
+node "$REPO_HOME/scripts/guard/check_message.mjs" "\$1" || exit 1
+if [[ -x "$ORIG_HOOKS/commit-msg" ]]; then exec "$ORIG_HOOKS/commit-msg" "\$@"; fi
+exit 0
+HOOK
+chmod +x "$RUN_HOOKS/commit-msg"
+
+# Bootstrap the worktree if the contract says how (for example an install), so its checks can run.
+"${VERIFY_CLI[@]}" --worktree-setup --cwd "$WORKTREE" || {
+  printf 'delegate: worktree setup failed; the worktree is kept at %s\n' "$WORKTREE" >&2
+  exit 1
+}
+
+SPEC_DIR="$("${WORK_CLI[@]}" spec-dir --cwd "$WORKTREE")"
+PROMPT="Use the tech-lead skill on the task below.
+
+You are running non-interactively in a git worktree on branch $BRANCH, which already exists and is recorded as yours. Do not create another branch. Nobody can answer questions while you run:
+- decide everything a rule or an approved precedent settles, and record each decision in $SPEC_DIR/decisions-made.md;
+- if a decision falls in an always-ask class (see the tech-lead skill) and no answer is given below, write the question with your recommended answer to $SPEC_DIR/questions.md and stop;
+- skip the plan gate, but write the task breakdown to $SPEC_DIR/SPEC.md first;
+- finish by running open-draft-pr only if the verification contract passes and the branch audit is clean; otherwise stop and report.
+
+Task (a ticket, or just a description; do not ask for a ticket):
+$TICKET"
+
+TIMEOUT_SEC="${TIMEOUT_SEC:-$((TIMEOUT_MIN * 60))}"
+EXIT=0
+START="$(date +%s)"
+export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0="$RUN_HOOKS"
+pushd "$WORKTREE" >/dev/null
+if [[ -n "${AI_ESSENTIALS_TOOL_CMD:-}" ]]; then
+  AI_ESSENTIALS_PROMPT="$PROMPT" perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SEC" bash -c "$AI_ESSENTIALS_TOOL_CMD" >&2 || EXIT=$?
+elif [[ "$TOOL" == claude ]]; then
+  claude -p "$PROMPT" --permission-mode auto --max-turns "$MAX_TURNS" --max-budget-usd "$BUDGET_USD" \
+    --output-format json </dev/null > "$SPEC_DIR/run.json" 2> "$SPEC_DIR/run.err" || EXIT=$?
+elif [[ "$TOOL" == codex ]]; then
+  perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SEC" \
+    codex exec --approve-for-me -C "$WORKTREE" "$PROMPT" \
+    </dev/null > "$SPEC_DIR/run.txt" 2> "$SPEC_DIR/run.err" || EXIT=$?
+elif [[ "$TOOL" == cursor ]]; then
+  perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SEC" \
+    "${AI_ESSENTIALS_CURSOR_BIN:-agent}" -p --force --trust --sandbox enabled --workspace "$WORKTREE" \
+    --output-format text "$PROMPT" \
+    </dev/null > "$SPEC_DIR/run.txt" 2> "$SPEC_DIR/run.err" || EXIT=$?
+else
+  popd >/dev/null; die "unknown tool: $TOOL"
+fi
+popd >/dev/null
+unset GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
+SECONDS_TAKEN=$(( $(date +%s) - START ))
+
+AUDIT_OUT="$("${AUDIT[@]}" --cwd "$WORKTREE" --base "$BASE" 2>&1)" && AUDIT_OK=true || AUDIT_OK=false
+VERIFY_OUT="$("${VERIFY_CLI[@]}" --cwd "$WORKTREE" 2>&1)" && VERIFY_OK=true || VERIFY_OK=false
+COMMITS="$(git -C "$WORKTREE" rev-list --count "$BASE..HEAD")"
+
+node -e '
+const [, branch, worktree, specDir, exit, seconds, commits, auditOk, audit, verifyOk, verify] = process.argv;
+console.log(JSON.stringify({
+  branch, worktree, specDir, toolExit: Number(exit), seconds: Number(seconds), commits: Number(commits),
+  audit: { ok: auditOk === "true", output: audit },
+  verify: { ok: verifyOk === "true", output: verify.slice(0, 800) },
+  questions: require("fs").existsSync(specDir + "/questions.md"),
+}, null, 2));
+' "$BRANCH" "$WORKTREE" "$SPEC_DIR" "$EXIT" "$SECONDS_TAKEN" "$COMMITS" "$AUDIT_OK" "$AUDIT_OUT" "$VERIFY_OK" "$VERIFY_OUT"

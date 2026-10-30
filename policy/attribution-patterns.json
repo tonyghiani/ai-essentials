@@ -1,0 +1,52 @@
+{
+  "//": "Phrases that credit an AI tool or vendor in a commit, PR, issue or comment. Mentioning a tool by name is fine (for example 'add Claude settings'); crediting it as author or generator is not. Matched case-insensitively unless flags say otherwise.",
+  "text": [
+    {
+      "id": "ai-coauthor-trailer",
+      "flags": "im",
+      "regex": "(?:^|[\\s\"'=])co-authored-by:.*(claude|anthropic|openai|codex|cursor|copilot|gemini|chatgpt|\\bgpt\\b|devin|\\bai\\b|\\bbot\\b)"
+    },
+    {
+      "id": "generated-with-footer",
+      "flags": "i",
+      "regex": "generated\\s+(with|by|using)\\s+\\[?(claude|codex|cursor|chatgpt|copilot|gemini|an?\\s+ai)"
+    },
+    {
+      "id": "made-with-trailer",
+      "flags": "im",
+      "regex": "(?:^|[\\s\"'=])made-with:\\s*\\S"
+    },
+    {
+      "id": "authored-with-line",
+      "flags": "im",
+      "regex": "(?:^|[\\s\"'=])(authored|written|created|built)\\s+(with|by)\\s+(claude|codex|cursor|copilot|chatgpt|gemini)"
+    },
+    {
+      "id": "robot-emoji",
+      "flags": "u",
+      "regex": "\\u{1F916}"
+    },
+    {
+      "id": "vendor-noreply-address",
+      "flags": "i",
+      "regex": "noreply@(anthropic|openai|cursor)\\.|cursoragent@"
+    }
+  ],
+  "branchPrefixes": [
+    "claude/",
+    "codex/",
+    "cursor/",
+    "copilot/",
+    "devin/"
+  ],
+  "identityTokens": [
+    "claude",
+    "anthropic",
+    "codex",
+    "openai",
+    "cursor",
+    "copilot",
+    "gemini",
+    "chatgpt"
+  ]
+}

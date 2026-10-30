@@ -71,3 +71,7 @@ Run your project's i18n extraction and check tool. Report the result — `--fix`
 ### Check result
 <output of i18n_check, or why it was not run>
 ```
+
+## When the tech lead invokes this
+
+Invoked when the diff adds or changes user-facing strings. Sweep only the changed files and report untranslated or untranslatable strings.

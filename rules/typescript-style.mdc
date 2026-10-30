@@ -11,7 +11,7 @@ established convention of its own.
 ## Naming
 
 ❌ const d = users.filter(u => u.active)      ❌ const rc = clientMock()
-✅ const activeUsers = users.filter((user) => user.active)     ✅ const rulesClient = clientMock()
+✅ const activeUsers = users.filter((user) => user.active)     ✅ const ordersClient = clientMock()
 ❌ const disabled = !status                   ❌ const refetchInterval = 30000
 ✅ const isDisabled = !status                 ✅ const REFETCH_INTERVAL_MS = 30_000
 

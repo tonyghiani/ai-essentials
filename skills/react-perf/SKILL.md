@@ -53,3 +53,7 @@ Say so explicitly if the component tree looks fine. "No render-perf findings; th
 ## If nothing in the code explains it
 
 Say that, and point at the likelier causes: network waterfalls, an unindexed query, a slow API, bundle parse time on first paint, layout thrash from synchronous `getBoundingClientRect` in a loop. Recommend a Performance recording before touching component code. Never invent a React cause to have something to report.
+
+## When the tech lead invokes this
+
+Invoked for components that render large lists, run on every keystroke, or sit high in a tree, when the change touches them. Report findings with a measured or measurable cause; recommend no memoisation without one.

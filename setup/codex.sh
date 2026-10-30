@@ -16,11 +16,24 @@ install_codex() (
   local staging
   staging="$(mktemp -d "${TMPDIR:-/tmp}/ai-essentials-codex.XXXXXX")"
   trap 'rm -rf "$staging"' EXIT
-  python3 "$repo/setup/render_codex_agents.py" "$repo" "$staging"
+  python3 "$repo/setup/render_agents.py" "$repo" codex "$staging"
 
   mkdir -p "$codex_home/agents" "$skills_dir"
-  _codex_safe_link "$repo" "$codex_home/ai-essentials"
+  # Rules only: the instructions refer to them as guidance/<name>.mdc, so nothing points back at this repo.
+  _codex_safe_link "$repo/rules" "$codex_home/guidance"
+  if [[ -L "$codex_home/ai-essentials" ]]; then
+    rm "$codex_home/ai-essentials"
+    info "Removed the old $codex_home/ai-essentials link (replaced by guidance/)."
+  fi
   _codex_safe_link "$repo/codex/INSTRUCTIONS.md" "$codex_home/AGENTS.md"
+  _codex_safe_link "$repo/codex/hooks" "$codex_home/hooks"
+
+  # Generated guardrail rules live in their own file; default.rules is Codex's own record of
+  # commands you approved, and is never touched.
+  mkdir -p "$codex_home/rules"
+  _codex_install_file "$repo/codex/guardrails.rules" "$codex_home/rules/guardrails.rules"
+  # The file used to be called ai-essentials.rules; drop the old copy so the rules are not applied twice.
+  rm -f "$codex_home/rules/ai-essentials.rules"
 
   # Keep an existing legacy path current for configs that explicitly reference it.
   if [[ -e "$codex_home/instructions.md" || -L "$codex_home/instructions.md" ]]; then
@@ -43,8 +56,10 @@ install_codex() (
   if [[ -s "$codex_home/AGENTS.override.md" ]]; then
     warn "$codex_home/AGENTS.override.md takes precedence over the installed AGENTS.md."
   fi
-  info "Rules are referenced by AGENTS.md through $codex_home/ai-essentials/rules/."
+  info "Rules are referenced by AGENTS.md through $codex_home/guidance/."
   info "Start a new Codex session to load the global instructions and custom agents."
+  info "Codex runs hooks only after you trust them: open Codex, run /hooks, review and trust the ai-essentials hooks."
+  info "Run ./setup/install.sh --config to preview merging hooks.json."
   echo ""
 )
 

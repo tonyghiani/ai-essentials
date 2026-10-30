@@ -31,13 +31,13 @@ Services and anything stateful get a hand-rolled fake that round-trips state: a 
 NotFound until `create`, an API that tracks `enabled` so pause then resume behaves. Cast at the seam
 with `as unknown as T`, and JSDoc each option field.
 
-✅ jest.mock('../../hooks/use_kibana', () => ({ useKibana: () => stub }));
+✅ jest.mock('../../hooks/use_services', () => ({ useServices: () => stub }));
 `jest.mock` is for module-mocking your own hooks in component tests. Not for services.
 
 ✅ const REQUEST = {} as IRequest;
 Shared fixtures are SCREAMING_SNAKE module constants.
 
-Variables get full names here too: `rulesClient`, not `rc`.
+Variables get full names here too: `ordersClient`, not `rc`.
 
 ## Assertions
 
@@ -48,6 +48,10 @@ Concrete values, or `expect.objectContaining`. Snapshots only where a tool gener
 Negative assertions pin what must not happen, such as proving a guard took the cheap read.
 
 ## What to test
+
+Whether a test is worth writing at all is decided by `test-value.mdc`: behaviour that can break, no
+assertions against copies of the code or config, nothing that passes with the implementation deleted.
+Once a test passes that bar, this file says how to write it.
 
 Edge cases and contracts first; the happy path only as their setup. Idempotency, retry after partial
 failure, a missing dependency, out-of-band state change, inverted ranges, and the exact boundary

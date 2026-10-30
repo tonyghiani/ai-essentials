@@ -21,7 +21,7 @@ those. You focus exclusively on **structural soundness and long-term health**.
 
 ### Backward compatibility
 - API contract changes: are existing callers still compatible?
-- Persisted data: can existing saved objects, stored queries, or index data
+- Persisted data: can existing stored records, stored queries, or index data
   be read after this change without migration?
 - Configuration changes: do existing deployments need updates?
 - Feature flags: is the change gated appropriately for incremental rollout?

@@ -1,0 +1,29 @@
+{
+  "//": "Keys merged into ~/.cursor/cli-config.json by setup/apply.sh. Attribution off per Cursor forum reports; these keys are not in official docs, so doctor.sh checks them and the branch audit is the layer that actually proves no trailer landed. Also turn off Commit Attribution and PR Attribution in Cursor Settings, which this file cannot do. Cursor cloud agents and some editor surfaces ignore the opt-out, so never use them for git actions.",
+  "attribution": {
+    "attributeCommitsToAgent": false,
+    "attributePRsToAgent": false
+  },
+  "permissions": {
+    "allow": [],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/*.p12)",
+      "Read(**/id_rsa*)",
+      "Read(**/id_ed25519*)",
+      "Read(**/.aws/credentials)",
+      "Read(**/.ssh/**)",
+      "Write(**/.env)",
+      "Write(**/.env.*)",
+      "Write(**/*.pem)",
+      "Write(**/*.p12)",
+      "Write(**/id_rsa*)",
+      "Write(**/id_ed25519*)",
+      "Write(**/.aws/credentials)",
+      "Write(**/.ssh/**)",
+      "Shell(sudo)"
+    ]
+  }
+}

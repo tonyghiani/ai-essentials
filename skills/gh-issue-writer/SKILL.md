@@ -51,3 +51,7 @@ formatted Markdown — never call `gh issue create`.
 - **Tone**: Professional, clear, neutral, highly technical. Focus on observable behavior.
 - **Formatting**: **Bold** for key concepts. `Inline code` for technical terms, field names, file names. Concrete examples in (parentheses) when helpful.
 - Keep the body concise — aim for ≤30 lines of Markdown.
+
+## Attribution
+
+The text is the user's. Add no footer, badge, "generated" note or tool name as author (the no-tool-credit rule).

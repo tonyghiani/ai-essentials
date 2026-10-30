@@ -66,3 +66,7 @@ Check the test id attribute is present too (`data-testid`, or whatever the proje
 ## Be honest about limits
 
 Reading code cannot confirm contrast ratios, actual screen-reader output, or focus order as rendered. State which findings are code-certain and which need a real check: keyboard-only walkthrough, VoiceOver or NVDA pass, axe DevTools, or a contrast checker. Don't report a contrast failure you inferred from a variable name.
+
+## When the tech lead invokes this
+
+Invoked when the diff adds or changes interactive UI: forms, modals, flyouts, custom controls. Audit only the changed components and report defects that block keyboard or screen-reader use.

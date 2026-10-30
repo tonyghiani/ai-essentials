@@ -1,7 +1,7 @@
 ---
 name: review-pr-comments
 voice-profile: marco
-description: Triage PR review comments — decide whether to accept or push back on each one. Given comment links from a GitHub PR, fetches comment content and PR diff, then reasons about each comment in context. Uses a personal voice profile for suggested replies — swap ../shared/pr-review-voice-marco.md for your own. Use when the user shares PR comment links, asks "should I accept this feedback", or wants help responding to PR review comments.
+description: Triage PR review comments — decide whether to accept or push back on each one. Given comment links from a GitHub PR, fetches comment content and PR diff, then reasons about each comment in context. Uses a personal voice profile for suggested replies — swap the voice profile in the shared folder for your own. Use when the user shares PR comment links, asks "should I accept this feedback", or wants help responding to PR review comments.
 ---
 
 # Review PR Comments

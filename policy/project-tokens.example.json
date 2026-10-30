@@ -1,0 +1,4 @@
+{
+  "//": "Copy to project-tokens.local.json (gitignored) and list the names of your own projects, employers and build commands. scripts/guard/scan_repo.mjs, run by validate.sh, fails when any of them appears in a skill, rule, agent, script or doc, because this setup must work in any repo. The words live in your local file so this repository names no project itself. Matched case-insensitively as plain text.",
+  "tokens": ["my-product", "my-product-cli", "scripts/my_build_tool"]
+}

@@ -1,0 +1,27 @@
+{
+  "//": "Reference for ~/.cursor/hooks.json. Merged by setup/apply.sh, not symlinked. User-level hook paths run from ~/.cursor, so ./hooks/ is the link to ai-essentials/cursor/hooks. UNVERIFIED on this machine: the Cursor CLI is not installed, so payload field names follow the docs. Test in the app, then record the real payload.",
+  "version": 1,
+  "hooks": {
+    "stop": [
+      {
+        "command": "node ./hooks/verify-on-stop.mjs",
+        "loop_limit": 5
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "node ./hooks/guard-git.mjs"
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "node ./hooks/format-on-edit.mjs"
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "node ./hooks/log-correction-signal.mjs"
+      }
+    ]
+  }
+}

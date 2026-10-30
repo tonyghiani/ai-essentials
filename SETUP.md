@@ -31,11 +31,14 @@ Creates symlinks into `~/.claude/`:
 | Link | Source |
 |------|--------|
 | `~/.claude/skills` | `skills/` |
-| `~/.claude/agents` | `agents/` |
+| `~/.claude/agents` | `~/.ai-essentials/generated/claude/agents/` (generated from `agents/`) |
 | `~/.claude/hooks`  | `claude/hooks/` |
 | `~/.claude/CLAUDE.md` | `claude/CLAUDE.md` |
+| `~/.ai-essentials/repo` | this repository; the stable path skills use to reach scripts |
 
-Creates `~/.claude/settings.json` from `claude/settings.reference.json` if none exists. If a settings file already exists, the installer prints a diff command and leaves it untouched.
+Agents are generated, not linked: neutral agents (`access:`, `tier:` frontmatter) become Claude subagents with a `tools:` restriction, which a plain symlink cannot give them.
+
+Creates `~/.claude/settings.json` from `claude/settings.reference.json` if none exists. If one exists, the installer leaves it alone; run `./setup/install.sh --config` to preview merging the reference into it, and `--config-write` to apply.
 
 Skills load as slash commands (`/review-team`, `/tdd`, etc.). Agents load as subagent types for the `Agent` tool.
 
@@ -56,7 +59,7 @@ Installs for local Codex clients, including the CLI and desktop app:
 | Installed path | Source |
 |----------------|--------|
 | `~/.codex/AGENTS.md` | Symlink to `codex/INSTRUCTIONS.md` |
-| `~/.codex/ai-essentials` | Symlink to this repository, including all `rules/` |
+| `~/.codex/guidance` | Symlink to this repository's `rules/` folder |
 | `~/.agents/skills/<name>` | Individual symlinks to `skills/<name>/` |
 | `~/.agents/skills/shared` | Symlink to shared skill references |
 | `~/.codex/agents/<name>.toml` | Generated from `codex/agents/<name>.toml` metadata and the full `agents/<name>.md` prompt |
@@ -90,6 +93,48 @@ agent definitions.
 
 ---
 
+## Live configs: preview, apply, check
+
+Live settings stay unsymlinked because each tool writes to them. Merge the reference configs in instead:
+
+```bash
+./setup/install.sh --config          # dry run: prints a diff for each file, writes nothing
+./setup/install.sh --config-write    # applies it; backups go to ~/.ai-essentials/backups
+./setup/install.sh --doctor          # checks links, hooks, attribution off in every tool, git and gh identity
+```
+
+The merge is additive and idempotent. It touches only these keys and keeps everything else:
+
+| File | Merged |
+|---|---|
+| `~/.claude/settings.json` | `permissions` (allow, ask, deny), `attribution`, `includeCoAuthoredBy`, `hooks`, `autoMode` |
+| `~/.cursor/hooks.json` | `hooks` |
+| `~/.cursor/cli-config.json` | `attribution`, `permissions` |
+| `~/.codex/hooks.json` | `hooks` |
+| `~/.codex/rules/guardrails.rules` | copied whole; `~/.codex/rules/default.rules` is never touched |
+
+Permission blocks are generated from `policy/guardrails.json`; after editing it run `node scripts/guardrails/render.mjs --write`.
+
+### Steps no script can do
+
+- **Codex:** hooks run only after you trust them. Open Codex, run `/hooks`, and trust the four ai-essentials hooks.
+- **Cursor:** turn off Commit Attribution and PR Attribution in Cursor Settings. Hook payloads there follow the docs and are untested on this machine, since the Cursor CLI is not installed.
+- **Per repo:** run the `verify-contract` skill once so the Stop-hook gate knows that repo's checks.
+
+### Machine-local data
+
+`~/.ai-essentials/state/` holds logs, specs and the list of branches the agent created. It contains prompt text, so it is never inside a repository. `contracts/*.json`, `policy/decisions.local.md` and `policy/project-tokens.local.json` live in this checkout but are gitignored. The last one lists the names of your own projects; `validate.sh` fails if any appears in a skill, rule, agent, script or doc, so the setup stays project-agnostic (see `policy/project-tokens.example.json`).
+
+### Known gaps
+
+- Codex and Cursor have no turn or budget flag; `delegate.sh` enforces a wall-clock timeout instead.
+- Cursor delegation needs its `agent` CLI (see cursor.com/docs/cli) and `CURSOR_API_KEY` or a login; it is not installed on this machine, so that path is covered by flag-assertion tests only.
+- Codex can be under managed (MDM) requirements (`approval_policy` cannot be `never`); unattended Codex runs use `--approve-for-me`.
+- Cursor shell permissions match only a command's first word, so multi-word rules there rely on the guard hook.
+- Outside `ai-delegate`, no-credit enforcement for Codex depends on you trusting its hooks in `/hooks`. Delegated runs also get a commit-msg hook that works in every tool without trust.
+
+---
+
 ## Verification
 
 ```bash
@@ -103,8 +148,9 @@ ls ~/.cursor/rules            # should list *.mdc files
 # Codex (use $CODEX_HOME instead of ~/.codex if set)
 ls ~/.agents/skills                    # should list skill folders and shared
 cat ~/.codex/AGENTS.md                 # should show global instructions
-ls ~/.codex/ai-essentials/rules        # should list *.mdc files
-ls ~/.codex/agents                    # should list both *.toml agent definitions
+ls ~/.codex/guidance                  # should list *.mdc files
+ls ~/.codex/agents                    # should list the generated *.toml agent definitions
+ls ~/.codex/rules                      # should include guardrails.rules
 
 # Repo structure
 ./scripts/validate.sh
@@ -116,9 +162,10 @@ ls ~/.codex/agents                    # should list both *.toml agent definition
 
 | Tool | Requirement |
 |------|-------------|
-| Claude Code | `node` for settings merge; bash |
+| All | `node` 20+ (hooks, scripts, config merge), `python3` (agent renderer), `git`, `gh` logged in as you |
+| Claude Code | bash |
 | Cursor | bash |
-| Codex | bash, python3; a current Codex release with custom agent support |
+| Codex | bash; a current Codex release with custom agents and hooks |
 
 ---
 
@@ -132,8 +179,9 @@ git pull
 ```
 
 Symlinked instructions, rules, and existing skills update automatically on pull.
-Re-run `--codex` after adding skills or changing agent prompts or Codex agent metadata;
-the installer regenerates the native agent definitions.
+Re-run the installer after adding skills or changing agent sources; it regenerates the per-tool
+agent definitions. Run `./scripts/validate.sh` (add `VALIDATE_TESTS=1` for the test suites) before
+committing changes to skills, rules, hooks or policy.
 
 ---
 

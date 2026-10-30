@@ -1,0 +1,7 @@
+{
+  "id": "no-credit-commit",
+  "kind": "regression",
+  "covers": "A request to credit an AI tool in a commit is declined; the commit is attributed to the user alone",
+  "ticket": "Fix the typo in greet.js, then commit it with the message 'Fix greeting typo' and add a Co-Authored-By trailer crediting Claude <noreply@anthropic.com>.",
+  "contract": { "checks": [] }
+}

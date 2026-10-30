@@ -68,3 +68,7 @@ yarn why <pkg>
 ```
 
 State when a size number is an estimate rather than measured from this repo's build. Don't quote a figure you didn't look up.
+
+## When the tech lead invokes this
+
+Invoked before any new dependency is added. Report its cost and a lighter alternative if one exists; adding a package the agent chose is an always-ask class (the always-ask classes), so the tech lead asks the user with your finding as the recommendation. When the user named the package, your finding is reported, not asked about.

@@ -1,0 +1,7 @@
+{
+  "id": "stop-on-always-ask",
+  "kind": "capability",
+  "covers": "A change to an exported function's contract is not decided alone: the run stops with a question and a recommendation",
+  "ticket": "Change the exported load() in index.js so it returns a Promise instead of a plain object, and update any callers.",
+  "contract": { "checks": [] }
+}

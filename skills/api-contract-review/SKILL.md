@@ -9,7 +9,7 @@ A contract is the part you can't take back. Review it before it merges, not afte
 
 ## What counts as a contract
 
-HTTP routes, plugin `setup`/`start` return values, exported package symbols, saved object schemas and their migrations, persisted config, URL and locator state, and any type another team imports.
+HTTP routes, plugin `setup`/`start` return values, exported package symbols, persisted schemas and their migrations, persisted config, URL and locator state, and any type another team imports.
 
 ## Checklist
 
@@ -20,7 +20,7 @@ Walk each change and classify it:
 - **Safe**: adding an optional field, adding a new route, widening an accepted input, narrowing a returned union to fewer cases *only if* no consumer switches on the removed case.
 - **Breaking**: removing or renaming a field, making an optional field required, narrowing accepted input, widening a returned union, changing a status code, changing a default that alters behaviour.
 
-For each breaking change, find the consumers. Grep for the symbol, the route path, the saved object type. Report the call sites you found and say plainly if you could not establish the full set.
+For each breaking change, find the consumers. Grep for the symbol, the route path, the persisted type. Report the call sites you found and say plainly if you could not establish the full set.
 
 ### Input validation
 
@@ -83,3 +83,7 @@ Safe to ship | Ship with a migration | Breaking, needs a version bump or depreca
 ```
 
 Cite every finding with `file:line`. If the change is clean, say so and name the consumers you checked, so the reader knows the claim's scope.
+
+## When the tech lead invokes this
+
+Invoked when the diff adds or changes a route, plugin contract, persisted-schema or exported package API. Changing a contract is an always-ask class (the always-ask classes): report the compatibility risk and let the tech lead ask the user.

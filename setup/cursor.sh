@@ -17,8 +17,16 @@ install_cursor() {
   mkdir -p "$HOME/.cursor/skills"
   _cursor_safe_link "$repo/skills" "$HOME/.cursor/skills/ai-essentials"
 
+  # Hooks run from ~/.cursor, so ./hooks/<name>.mjs in hooks.json resolves through this link.
+  _cursor_safe_link "$repo/cursor/hooks" "$HOME/.cursor/hooks"
+
+  # Agents are generated from the neutral source, so read-only agents get `readonly: true`.
+  render_agents "$repo" cursor "$HOME/.ai-essentials/generated/cursor/agents"
+  _cursor_safe_link "$HOME/.ai-essentials/generated/cursor/agents" "$HOME/.cursor/agents"
+
   echo ""
   info "In Cursor chat, reference a skill with: @~/.cursor/skills/ai-essentials/<name>/SKILL.md"
+  info "Run ./setup/install.sh --config to preview merging hooks.json and cli-config.json."
   echo ""
 }
 
@@ -33,7 +41,7 @@ _cursor_safe_link() {
       return
     fi
     warn "Replacing existing symlink: $target (was → $existing)"
-    mv "$target" "${target}.bak"
+    rm "$target"
   elif [[ -e "$target" ]]; then
     warn "Backing up: $target → ${target}.bak"
     mv "$target" "${target}.bak"

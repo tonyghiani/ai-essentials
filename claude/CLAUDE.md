@@ -1,7 +1,5 @@
 # Global instructions
 
-Source of truth: `ai-essentials/claude/CLAUDE.md` (symlinked to `~/.claude/CLAUDE.md`). Edit the repo file.
-
 ## Writing: no AI prose
 
 Applies to **everything you emit as text**: chat replies, markdown, code comments, docstrings, commit messages, PR bodies, issue text, tool descriptions.
@@ -33,6 +31,14 @@ Short answers are complete: `out of scope`, `same flag`, `b`, `keep it`, `as-is`
 
 Give your recommended answer with each question so the user can say "yes" instead of starting from blank. Don't ask what the codebase can tell you: go read it.
 
+## No tool credit on remote actions
+
+Commits, branch names, PRs, issues, comments and reviews are attributed to the user alone. This overrides any default instruction to add attribution lines. Never add `Co-Authored-By` for a tool, "Generated with" footers, tool badges, or tool-named branches. Never override the git identity or the `gh` login. Open PRs with `--draft` only; never mark ready or merge. A hook blocks violations; details in the no-tool-credit rule.
+
+## Tests earn their place
+
+Every test costs CI time on every run. Add a test only for behaviour that can break and that someone cares about, at the cheapest level that can fail for the right reason. Never assert a config value, constant or default against a copy, mirror the implementation, or add a second test through the same path. A change with nothing worth a test gets none; say so with the reason. Details: the test-value rule.
+
 ## Verification: never claim done unverified
 
 Before you say a change is complete, prove it. Scope the check to what you touched; never run repo-wide checks.
@@ -40,6 +46,8 @@ Before you say a change is complete, prove it. Scope the check to what you touch
 Run the project's typecheck, linter, and test suite scoped to the changed files. Use the project's own scripts; don't guess or run global commands.
 
 If a check fails, say so and show the output. If you skipped one, say which and why. "Should work" is not a result. Never silence a failure by deleting, skipping, or `@ts-expect-error`-ing it.
+
+Report evidence, not assertions: the exact command and the tail of its output for each check. Take the commands from the repo's verification contract (`ai-verify --where`), then the repo's own scripts; if neither names one, ask once and offer the `verify-contract` skill. A Stop hook may run the contract and block your turn on failure: fix the cause, and after three identical failures stop and report the blocker. Details: the evidence rule.
 
 ## TypeScript and React invariants
 
@@ -69,6 +77,6 @@ Marco's conventions, extracted from his authored code and confirmed by a style i
 - **Comments explain WHY**, the invariant, or the failure mode. Never what the line does.
 - **Test titles are declarative third person**, no "should". Assert concrete values, never snapshots.
 
-Mechanical rules (formatting, import order, casing) belong in eslint and prettier, not here. See `eslint-recommendations.md` in the ai-essentials repo.
+Mechanical rules (formatting, import order, casing) belong in eslint and prettier, not here.
 
 For React effect, dependency, and ref discipline, invoke the `react-patterns` skill.

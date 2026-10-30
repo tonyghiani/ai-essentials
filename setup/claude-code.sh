@@ -8,9 +8,13 @@ install_claude_code() {
   mkdir -p "$HOME/.claude"
 
   _safe_link "$repo/skills"          "$HOME/.claude/skills"
-  _safe_link "$repo/agents"          "$HOME/.claude/agents"
   _safe_link "$repo/claude/hooks"    "$HOME/.claude/hooks"
   _safe_link "$repo/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+
+  # Agents are generated, not linked: a read-only reviewer must get `tools:` restrictions,
+  # which the neutral source format does not carry.
+  render_agents "$repo" claude "$HOME/.ai-essentials/generated/claude/agents"
+  _safe_link "$HOME/.ai-essentials/generated/claude/agents" "$HOME/.claude/agents"
 
   _init_claude_settings "$repo"
   echo ""
@@ -49,7 +53,8 @@ function stripComments(o) {
 fs.writeFileSync(dest, JSON.stringify(stripComments(obj), null, 2) + '\n');
 EOF
   success "Created: $target"
-  warn "Review $target before starting Claude Code — it enables broad Bash permissions."
+  warn "Review $target before starting Claude Code."
+  info "Run ./setup/install.sh --config to preview merging hooks, permissions and attribution into it."
 }
 
 _safe_link() {
@@ -63,7 +68,7 @@ _safe_link() {
       return
     fi
     warn "Replacing existing symlink: $target (was → $existing)"
-    mv "$target" "${target}.bak"
+    rm "$target"
   elif [[ -e "$target" ]]; then
     warn "Backing up: $target → ${target}.bak"
     mv "$target" "${target}.bak"

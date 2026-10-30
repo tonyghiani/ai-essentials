@@ -12,10 +12,36 @@ ai-essentials/
 ├── rules/          # Standing guidance (Cursor `.mdc`; content is portable)
 ├── skills/         # On-demand workflows (`SKILL.md` + supporting files)
 │   └── shared/     # Cross-skill assets (voice profiles, etc.)
-├── agents/         # Specialist agent personas (subagents / delegated workers)
-├── scripts/        # Maintenance helpers (validate.sh)
+├── agents/         # Agent sources, rendered per tool (read-only reviewers, personas)
+├── policy/         # Guardrails, attribution patterns, always-ask classes, decision format
+├── contracts/      # Per-repo verification contracts (gitignored; example.json is tracked)
+├── scripts/        # verify, guard, work, guardrails, evals, delegate.sh, validate.sh
+├── claude/ cursor/ codex/   # Per-tool hooks and reference configs
+├── setup/          # Installers, config merge (apply.mjs), doctor.mjs, agent renderer
+├── docs/           # Delegation strategy and implementation plan
 └── presentations/  # Standalone slide decks (HTML, no build step)
 ```
+
+## Delegating work
+
+The full walkthrough, with recipes and troubleshooting, is in [docs/guide.md](docs/guide.md).
+
+Install once, then check it:
+
+```bash
+./setup/install.sh --all --config-write --doctor
+```
+
+| You want | Do |
+|---|---|
+| A ticket taken from spec to a draft PR | In any of the three tools, ask for the `tech-lead` skill with the ticket. It branches, interviews you on the spec, implements, verifies, reviews with fresh context, and opens a draft PR |
+| The agent to know a repo's checks | Run the `verify-contract` skill once in that repo; the contract is stored here, gitignored, not in the repo |
+| Several tickets in parallel | `ai-delegate --tool claude\|codex\|cursor "<task>"` per task (a ticket or just a description); each gets its own worktree beside the repo, a turn or time cap, and an audit |
+| One mechanical change over many files | `ai-fanout --tool claude --branch <slug> --list files.txt --prompt "Migrate {file} ..."`; runs 3 files first, then `--all` |
+| A draft PR babysat | `/loop 15m` with the `ci-babysit` skill |
+| To know the setup still works | `node scripts/evals/run.mjs --self-test` (free, 30 tasks), or `--tool claude\|codex\|cursor` for real runs |
+
+What it will not do, in any tool: credit itself on a commit, PR or comment, mark a PR ready, merge, force push, or push to a default branch. Hooks enforce that; `setup/doctor.mjs` checks the hooks and the attribution switches are in place. Details in [docs/implementation-plan.md](docs/implementation-plan.md).
 
 ## Tool compatibility
 

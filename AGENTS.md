@@ -7,6 +7,9 @@ Agent configuration for this repository. Install globally via symlinks (see
 
 - [rules/no-ai-prose.mdc](rules/no-ai-prose.mdc)
 - [rules/numbered-replies.mdc](rules/numbered-replies.mdc)
+- [rules/no-ai-attribution.mdc](rules/no-ai-attribution.mdc): remote actions carry the user's name only
+- [rules/verification-evidence.mdc](rules/verification-evidence.mdc): report commands and output, not assertions
+- [rules/test-value.mdc](rules/test-value.mdc): tests only for behaviour worth protecting; CI runs cost money
 
 For Claude Code these two, plus verification discipline and a compact TS/React
 invariants block, are assembled in [claude/CLAUDE.md](claude/CLAUDE.md).
@@ -67,17 +70,52 @@ Paths inside a skill resolve relative to that skill's own directory.
 | i18n sweep | [skills/i18n-sweep/SKILL.md](skills/i18n-sweep/SKILL.md) |
 | Distil memory from correction log | [skills/memory-distill/SKILL.md](skills/memory-distill/SKILL.md) |
 | Resolve merge conflicts | [skills/resolve-merge-conflicts/SKILL.md](skills/resolve-merge-conflicts/SKILL.md) |
+| Take a ticket from spec to draft PR | [skills/tech-lead/SKILL.md](skills/tech-lead/SKILL.md) |
+| Execute one specified task end to end | [skills/deliver/SKILL.md](skills/deliver/SKILL.md) |
+| Push the agent's branch and open a draft PR | [skills/open-draft-pr/SKILL.md](skills/open-draft-pr/SKILL.md) |
+| Write a repo's verification contract | [skills/verify-contract/SKILL.md](skills/verify-contract/SKILL.md) |
+| Watch a draft PR's CI (for `/loop`) | [skills/ci-babysit/SKILL.md](skills/ci-babysit/SKILL.md) |
 
 ## Agents (delegated workers)
 
+- [agents/reviewer.md](agents/reviewer.md): fresh-context, read-only review against the spec
+- [agents/convention-checker.md](agents/convention-checker.md): read-only pass or fail against the style rules
 - [agents/esql-expert.md](agents/esql-expert.md) — ES|QL queries (domain-specific, read-only tools)
 - [agents/marco-blogger.md](agents/marco-blogger.md) — personal blog voice (replace for your own setup)
+
+## Definitions never refer to this repo
+
+Skills, rules, agents and the global instructions must work wherever they are installed, so they never name this
+repository or point into it. They call commands by name (`ai-work`, `ai-verify`, `ai-decisions`, `ai-pr-body`,
+`ai-audit`), refer to other skills and rules by name, and keep anything they need beside themselves (the tech-lead
+skill carries its own `always-ask.md`). `scripts/guard/scan_repo.mjs`, run by `validate.sh`, fails when a definition
+names the repo or a path in it, or names a project listed in `policy/project-tokens.local.json`.
+
+## Delegation system
+
+Daily use, start to finish: [docs/guide.md](docs/guide.md).
+
+Hand an agent a ticket and get back a verified draft PR. Design and rationale:
+[docs/delegation-strategy.md](docs/delegation-strategy.md) (sourced principles) and
+[docs/implementation-plan.md](docs/implementation-plan.md) (what was built and why).
+
+| Piece | Where |
+|---|---|
+| Verification gate: runs a repo's contract on every Stop | `scripts/verify/`, `*/hooks/verify-on-stop.mjs` |
+| No-credit and draft-only guard | `scripts/guard/`, `*/hooks/guard-git.mjs`, `policy/attribution-patterns.json` |
+| Permissions from one source | `policy/guardrails.json`, `scripts/guardrails/render.mjs` |
+| Branch, spec and decision bookkeeping | `scripts/work/` (commands `ai-work`, `ai-decisions`, `ai-pr-body`), `skills/tech-lead/always-ask.md`, `policy/decisions.example.md` |
+| Headless runs in worktrees beside the repo | `ai-delegate`, `ai-fanout` (installed on the PATH from `scripts/delegate.sh`, `scripts/fanout.sh`) |
+| Evals of the setup itself | `scripts/evals/` (`node scripts/evals/run.mjs --self-test`) |
+| Install, merge into live configs, check | `setup/install.sh --all --config-write --doctor`; also links the `ai-*` commands into `~/.local/bin` |
+
+Per-repo contracts (`contracts/*.json`) and `policy/decisions.local.md` are gitignored: this repo is public.
 
 ## Claude Code specifics
 
 - [claude/CLAUDE.md](claude/CLAUDE.md) — always-on global instructions
 - [claude/settings.reference.json](claude/settings.reference.json) — annotated settings reference
-- [claude/hooks/log-correction-signal.mjs](claude/hooks/log-correction-signal.mjs) — `UserPromptSubmit` hook feeding `memory-distill`
+- [claude/hooks/](claude/hooks/): `log-correction-signal` (feeds `memory-distill`), `verify-on-stop`, `guard-git`, `format-on-edit`. Cursor and Codex have the same four in `cursor/hooks/` and `codex/hooks/`
 
 ## Codex CLI specifics
 

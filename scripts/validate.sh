@@ -80,6 +80,59 @@ for entry in "${STALE_CLAIMS[@]}"; do
     2>/dev/null | sed "s|^$ROOT/||")
 done
 
+# No skill or rule may credit an AI tool, and skills must stay repo-agnostic.
+if ! scan_output="$(node "$ROOT/scripts/guard/scan_repo.mjs" 2>&1)"; then
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && err "${line#ERROR: }"
+  done <<< "$scan_output"
+fi
+
+# Every hook script a reference config registers must exist in the repo.
+for ref in "$ROOT/claude/settings.reference.json" "$ROOT/cursor/hooks.reference.json" "$ROOT/codex/hooks.reference.json"; do
+  [[ -f "$ref" ]] || continue
+  tool_dir="$(basename "$(dirname "$ref")")"
+  while IFS= read -r hook; do
+    [[ -z "$hook" ]] && continue
+    [[ -f "$ROOT/$tool_dir/hooks/$hook" ]] || err "$ref registers a missing hook: $tool_dir/hooks/$hook"
+  done < <(grep -oE 'hooks/[a-z0-9-]+\.mjs' "$ref" | sed 's#^hooks/##' | sort -u)
+done
+
+# Always-on instructions stay short; the docs recommend under 200 lines.
+claude_md_lines="$(wc -l < "$ROOT/claude/CLAUDE.md")"
+if [[ "$claude_md_lines" -ge 200 ]]; then
+  err "claude/CLAUDE.md is $claude_md_lines lines; keep it under 200"
+fi
+
+# Every agent must render for every tool, and read-only agents must stay read-only there.
+if command -v python3 &>/dev/null; then
+  render_tmp="$(mktemp -d)"
+  for tool in claude cursor codex; do
+    if ! render_output="$(python3 "$ROOT/setup/render_agents.py" "$ROOT" "$tool" "$render_tmp/$tool" 2>&1)"; then
+      err "agents do not render for $tool: $render_output"
+    fi
+  done
+  rm -rf "$render_tmp"
+fi
+
+# Permission references must match policy/guardrails.json.
+if ! guardrails_output="$(node "$ROOT/scripts/guardrails/render.mjs" --check 2>&1)"; then
+  err "$guardrails_output"
+fi
+
+# Set VALIDATE_TESTS=1 to also run every test suite (about 30 seconds).
+if [[ "${VALIDATE_TESTS:-0}" == "1" ]]; then
+  if ! test_output="$(cd "$ROOT" && node --test "scripts/**/*.test.mjs" "setup/*.test.mjs" 2>&1)"; then
+    echo "$test_output" | grep -E "✖|fail|Error" | head -40 >&2
+    err "node tests failed"
+  fi
+  if command -v python3 &>/dev/null; then
+    if ! py_output="$(cd "$ROOT/setup" && python3 -m unittest discover -p '*_test.py' 2>&1)"; then
+      echo "$py_output" | tail -20 >&2
+      err "python tests failed"
+    fi
+  fi
+fi
+
 if [[ "$ERRORS" -gt 0 ]]; then
   echo "" >&2
   echo "$ERRORS validation error(s)." >&2

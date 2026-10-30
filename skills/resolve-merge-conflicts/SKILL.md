@@ -43,7 +43,7 @@ Follow the global verification rule: no repo-wide checks.
 
 - No markers left: `git diff --cached --name-only | xargs grep -ln '^<<<<<<<'`.
 - Jest for the directories around each resolved file, using the project's own jest config.
-- Type check for each affected project only (`node scripts/type_check --project <tsconfig>` in Kibana).
+- Type check for each affected project only, using the repo's verification contract (`ai-verify --where`) or its own type-check script. If neither names one, ask once.
 - Lint the resolved TS files.
 - Run the tests of any package whose fixtures the merge touched. A failing test is not automatically ours: check whether it already failed on the pre-merge HEAD, and say so either way. Fixing a pre-existing break is fine when it is small and obvious; tell the user.
 

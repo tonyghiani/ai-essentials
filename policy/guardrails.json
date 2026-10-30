@@ -1,0 +1,66 @@
+{
+  "//": "Tool-neutral source for what an agent may not do and what needs approval. scripts/guardrails/render.mjs turns it into Claude permissions, Codex rules and Cursor permissions; its --check mode fails when a reference file drifts. Commands are argv prefixes, never shell strings. The guard hook (scripts/guard) enforces the git and gh parts in every tool; permissions are the first layer, the hook the second.",
+  "denyRead": ["**/.env", "**/.env.*", "**/*.pem", "**/*.p12", "**/id_rsa*", "**/id_ed25519*", "**/.aws/credentials", "**/.ssh/**"],
+  "forbidden": [
+    ["git", "push", "--force"],
+    ["git", "push", "-f"],
+    ["gh", "pr", "merge"],
+    ["gh", "auth", "login"],
+    ["gh", "auth", "switch"],
+    ["gh", "auth", "token"]
+  ],
+  "//retired": "Entries earlier versions generated, removed from live configs on the next apply. A blanket prompt on recursive delete becomes a hard denial in unattended runs, so scripts/guard/rm.mjs blocks deletes outside the repository instead.",
+  "retired": {
+    "ask": [["rm", "-rf"], ["rm", "-r"]]
+  },
+  "ask": [
+    ["git", "reset", "--hard"],
+    ["git", "clean", "-fd"],
+    ["git", "checkout", "."],
+    ["git", "branch", "-D"],
+    ["sudo"],
+    ["chmod", "777"],
+    ["npm", "publish"],
+    ["yarn", "publish"],
+    ["gh", "release", "create"]
+  ],
+  "forbiddenPatterns": [
+    {
+      "id": "rm-root-or-home",
+      "regex": "\\brm\\s+(-[a-zA-Z]*[rR][a-zA-Z]*\\s+)*(-[a-zA-Z]*f[a-zA-Z]*\\s+)*(/|~|\\$HOME)(\\s|$)",
+      "reason": "Deleting the filesystem root or the home directory is never part of a task."
+    },
+    {
+      "id": "pipe-to-shell",
+      "regex": "\\b(curl|wget)\\b[^|\\n]*\\|\\s*(sudo\\s+)?(ba|z|da)?sh\\b",
+      "reason": "Piping a download into a shell runs unreviewed code. Download, read, then run."
+    }
+  ],
+  "allow": {
+    "claude": [
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git switch *)",
+      "Bash(git checkout *)",
+      "Bash(git fetch *)",
+      "Bash(git merge *)",
+      "Bash(git push *)",
+      "Bash(git worktree *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr create --draft *)",
+      "Bash(gh run view *)",
+      "Bash(gh api user *)",
+      "Bash(gh auth status *)",
+      "Bash(node ~/.ai-essentials/repo/scripts/*)"
+    ]
+  }
+}

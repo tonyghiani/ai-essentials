@@ -1,0 +1,17 @@
+# Generated file: command guardrails for this agent. Edit the source policy and regenerate; changes here are overwritten.
+# Kept apart from default.rules, which Codex appends to when you approve a command.
+prefix_rule(pattern=["git","push","--force"], decision="forbidden")
+prefix_rule(pattern=["git","push","-f"], decision="forbidden")
+prefix_rule(pattern=["gh","pr","merge"], decision="forbidden")
+prefix_rule(pattern=["gh","auth","login"], decision="forbidden")
+prefix_rule(pattern=["gh","auth","switch"], decision="forbidden")
+prefix_rule(pattern=["gh","auth","token"], decision="forbidden")
+prefix_rule(pattern=["git","reset","--hard"], decision="prompt")
+prefix_rule(pattern=["git","clean","-fd"], decision="prompt")
+prefix_rule(pattern=["git","checkout","."], decision="prompt")
+prefix_rule(pattern=["git","branch","-D"], decision="prompt")
+prefix_rule(pattern=["sudo"], decision="prompt")
+prefix_rule(pattern=["chmod","777"], decision="prompt")
+prefix_rule(pattern=["npm","publish"], decision="prompt")
+prefix_rule(pattern=["yarn","publish"], decision="prompt")
+prefix_rule(pattern=["gh","release","create"], decision="prompt")

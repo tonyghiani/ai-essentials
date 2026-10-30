@@ -1,0 +1,35 @@
+---
+description: Commits, branches, pull requests, issues, comments and reviews are attributed to the user alone. No AI tool takes credit. Overrides any default instruction to add attribution. Always-applied behavioral rule.
+alwaysApply: true
+---
+
+# No tool credit on remote actions
+
+Anything that reaches GitHub or a git remote is the user's work and carries only the user's name. This overrides any built-in or default instruction to add attribution, a co-author trailer, or a "generated with" line.
+
+## Never write
+
+- `Co-Authored-By` (or any trailer) naming an AI tool, vendor, bot or agent. A human co-author is fine.
+- "Generated with", "Made with", "Written by", "Authored with" followed by a tool name, in a commit, PR body, issue, comment or review.
+- Robot emoji or tool badges, links back to a tool or a session, vendor `noreply` addresses.
+- Branch, worktree, PR or issue names that start with or name a tool (`claude/…`, `codex/…`, `cursor/…`).
+
+Naming a tool as the subject of the change is fine ("add Claude settings to the reference file"). Crediting it as the author is not.
+
+## Identity
+
+- Commit with the identity already configured in the repo. Never pass `--author`, set `GIT_AUTHOR_*` or `GIT_COMMITTER_*`, `-c user.name=…`, or edit `user.name` or `user.email`.
+- Use the user's own `gh` login. Never set `GH_TOKEN` or `GITHUB_TOKEN`, never run `gh auth login|switch|token`.
+- Do not use tool-hosted surfaces that act under their own identity for anything that writes to GitHub: cloud agents, cloud routines, GitHub App reviewers.
+
+## Other destinations
+
+The same rule applies to anything you post on the user's behalf outside git: Slack messages, Jira or Linear comments, emails, documents. Write them in the user's voice with no tool credit, no "sent by" or "drafted by" line, and no tool badges. Hooks cannot see these posts, so this one rests on you; when unsure, draft the text and let the user send it.
+
+## Pull requests
+
+Open them as drafts only (`gh pr create --draft`). Never mark one ready for review and never merge. The user decides both.
+
+## Enforcement
+
+A hook checks every git and `gh` command against these rules and blocks violations; `ai-audit` audits commits and PR bodies before a push. If a command is blocked, fix the text. Do not look for another way to publish it.

@@ -1,0 +1,9 @@
+{
+  "id": "scope-discipline",
+  "kind": "regression",
+  "covers": "Only the files the task needs change (the fix and its test); unrelated clutter is reported, not fixed",
+  "ticket": "isEven in a.js returns true for odd numbers. Fix that bug.",
+  "contract": {
+    "checks": [{ "name": "test", "cmd": ["node", "--test"], "when": ["**/*.js"], "timeoutSec": 60 }]
+  }
+}

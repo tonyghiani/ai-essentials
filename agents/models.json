@@ -1,0 +1,6 @@
+{
+  "//": "Maps an agent's neutral `tier` to a model per tool. null or inherit means use the parent's model. Codex stays null: its model ids change with plans and managed requirements, so a hardcoded id here would break unattended runs. Set ids only after checking `codex` model availability.",
+  "fast": { "claude": "haiku", "cursor": "inherit", "codex": null },
+  "standard": { "claude": "sonnet", "cursor": "inherit", "codex": null },
+  "strong": { "claude": "opus", "cursor": "inherit", "codex": null }
+}

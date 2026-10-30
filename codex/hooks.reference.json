@@ -1,0 +1,45 @@
+{
+  "//": "Reference for ~/.codex/hooks.json. Merged by setup/apply.sh. Codex runs non-managed hooks only after you review them in /hooks, which cannot be automated: open Codex once after install, run /hooks, and trust all three. UNVERIFIED payloads until then. Hook scripts are linked at ~/.codex/hooks.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME\"/.codex/hooks/verify-on-stop.mjs"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME\"/.codex/hooks/guard-git.mjs"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME\"/.codex/hooks/format-on-edit.mjs"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME\"/.codex/hooks/log-correction-signal.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}

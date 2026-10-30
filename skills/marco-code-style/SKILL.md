@@ -14,9 +14,9 @@ first. Where project documentation states a rule Marco's own code contradicts, f
 file, and follow this file for new modules he owns.
 
 **Scope.** Mechanical rules (formatting, import order, casing, banned syntax) are lint config, not
-guidance; they live in `eslint-recommendations.md` in the ai-essentials repo. Cursor consumes the same
-material as file-scoped rules in `rules/typescript-style.mdc`, `rules/react-components.mdc`,
-`rules/node-api-patterns.mdc`, `rules/testing-style.mdc`, and `rules/project-structure.mdc`.
+guidance, so they belong in the project's own eslint and prettier config. Cursor consumes the same
+material as file-scoped rules: TypeScript style, React components, Node API patterns, testing style
+and project structure.
 
 ## Where his stated preference overrides his existing code
 
@@ -24,7 +24,7 @@ Read these first. Following the code instead of the preference is the most likel
 
 | Rule | His code | His answer |
 |---|---|---|
-| Type name prefixes | no prefixes in Kibana (58 declarations) | `I` on interfaces, `T` on type aliases |
+| Type name prefixes | none, across the codebase he worked in (58 declarations) | `I` on interfaces, `T` on type aliases |
 | Props interface | inline object type under ~4 props | always a named `interface IXProps` |
 | Guard braces | 12 brace-less single-line guards | always braces |
 | Imperative loops | 24 `for…of` for sequencing | declarative by default; imperative is a performance escape hatch |
@@ -35,7 +35,7 @@ Read these first. Following the code instead of the preference is the most likel
 
 ```tsx
 // Default form.
-export function SignificantEventsPage({ tab, onTabChange }: ISignificantEventsPageProps) {
+export function OrdersPage({ tab, onTabChange }: IOrdersPageProps) {
   // ...
 }
 
@@ -63,7 +63,7 @@ matter. Drilling props is preferred otherwise.
 
 - One hook per file. Filename is the hook name in `snake_case`: `use_time_range.ts`.
 - **`export function useX()`**, matching the component form.
-- **Derived state computed in render, never in an effect.** `const canManageStreams = streams?.manage === true`.
+- **Derived state computed in render, never in an effect.** `const canManageOrders = orders?.manage === true`.
 - Effects are for external systems only: breadcrumbs, timefilter sync, debounce timers. Say why in a comment.
 - `useLayoutEffect` for pre-paint redirects, **always with a comment naming the warning it avoids**.
 - `useMemo` justified by **referential stability**, and the comment says so: "without it every render
@@ -84,7 +84,7 @@ updates only when the mutation is trivially reversible.
 
 - `interface` for object shapes (82 uses), `type` for unions, mapped, and derived types (55). Reach for
   `interface` wherever it can substitute a `type`.
-- **`I` prefix on interfaces, `T` prefix on type aliases.** This overrides his Kibana code; match the
+- **`I` prefix on interfaces, `T` prefix on type aliases.** This overrides what his existing code did; match the
   neighbours in a project that already went the other way.
 - **Zero enums, ever.** String-literal unions; `as const` arrays only when the runtime list is needed.
 - **Exhaustiveness via `Record<Union, T>`, with a comment saying that's the point:** "Keying by reason
@@ -144,7 +144,7 @@ updates only when the mutation is trivially reversible.
 
 ## Server layering
 
-The reference shape is Kibana's `fields_metadata` plugin:
+The reference shape, from a plugin-style server module he authored:
 
 ```
 routes/<domain>/         thin; validates, calls the service, maps errors to status codes
@@ -156,7 +156,7 @@ services/<domain>/
 ```
 
 A service earns its own module when it holds state or exposes three or more operations. Below that,
-export a plain function (`assertSignificantEventsAccess`, `resolveStreamNames`).
+export a plain function (`assertOrdersAccess`, `resolveOrderNames`).
 
 **Validation at the boundary.** Zod, with every string and array explicitly bounded and every field
 described. The bounds are a learned correction: CodeQL flagged four unbounded arrays on one PR, and
@@ -180,7 +180,7 @@ query: z.object({ name: z.string().max(MAX_ID_LENGTH).describe('The name of the 
 - Fakes cast at the seam with `as unknown as T`.
 - Shared fixtures as SCREAMING_SNAKE module constants: `const REQUEST = {} as Request`.
 - Full variable names in tests too. The 37 `const rc = …` / `const sc = …` in one PR are a lapse, not a style.
-- **Test behaviour and edge cases, not the happy path.** Idempotency, retry after partial failure, missing
+- **Test behaviour and edge cases, not the happy path, and only what is worth protecting** (the test-value rule: no assertions against copies of config, no padding). Idempotency, retry after partial failure, missing
   plugin, out-of-band re-enable, inverted date range, the exact debounce boundary at 299ms then +1ms.
 - **1 snapshot assertion in everything he authored.** Assert concrete values and `expect.objectContaining`.
 - Async via `await expect(fn()).rejects.toBeInstanceOf(X)` / `.rejects.toMatchObject({ statusCode: 409 })`.

@@ -67,3 +67,11 @@ Webhook deliveries to our payment provider occasionally fail on transient networ
 - Verify non-idempotent endpoints still fail fast without retry.
 - Check logs include attempt count and final outcome.
 ```
+
+## Decisions section
+
+When this skill is used by `tech-lead` or `open-draft-pr`, do not write a "Decisions made without you" section. `ai-pr-body` appends it from the run's record, so it cannot be forgotten or paraphrased. Used on its own, this skill produces the template above and nothing else.
+
+## Attribution
+
+The text is the user's. Add no footer, badge, "generated" note or tool name as author (the no-tool-credit rule).

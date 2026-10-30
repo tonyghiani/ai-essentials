@@ -1,0 +1,1 @@
+printf '1. load() is public API and callers read it synchronously. Change the contract anyway?\nRecommended: add loadAsync() and keep load().\n' > "$(node "$AI_ESSENTIALS_REPO/scripts/work/cli.mjs" spec-dir)/questions.md"

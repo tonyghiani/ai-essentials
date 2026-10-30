@@ -1,7 +1,7 @@
 ---
 name: review-pr
 voice-profile: marco
-description: Review a GitHub pull request by URL using the review-team skill. Outputs copy-pasteable conventional comments with line references and code suggestions. Uses a personal voice profile by default — swap skills/shared/pr-review-voice-marco.md for your own. Use when the user shares a PR URL, asks to review a PR, or mentions "review pr".
+description: Review a GitHub pull request by URL using the review-team skill. Outputs copy-pasteable conventional comments with line references and code suggestions. Uses a personal voice profile by default — swap the voice profile in the shared folder for your own. Use when the user shares a PR URL, asks to review a PR, or mentions "review pr".
 ---
 
 # Review PR

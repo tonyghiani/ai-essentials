@@ -1,28 +1,44 @@
 {
   "//": "Reference copy of ~/.claude/settings.json. NOT symlinked: Claude Code writes to settings.json when you change theme or model via /config, and a symlink risks clobbering. Diff this against the live file when you want to reconcile.",
-
-  "//model": "Deliberately absent. Elastic's remote settings pin model=opusplan (Opus for planning, claude-sonnet-4-6 for execution) and that wins on restart. A local model key here is dead config that only misleads you about what is running.",
-
+  "//model": "Deliberately absent. Managed (organization) settings can pin the model, as opusplan (Opus for planning, claude-sonnet-4-6 for execution) and that wins on restart. A local model key here is dead config that only misleads you about what is running.",
   "//effortLevel": "high, not xhigh. xhigh globally spent maximum reasoning budget on trivial renames. Bump to xhigh via /config for genuinely hard reasoning; a skill cannot change session effort, so this is a manual toggle by design.",
   "effortLevel": "high",
-
   "permissions": {
-    "allow": ["Bash(*)", "Read(*)", "Write(*)", "Edit(*)"],
+    "allow": [
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git switch *)",
+      "Bash(git checkout *)",
+      "Bash(git fetch *)",
+      "Bash(git merge *)",
+      "Bash(git push *)",
+      "Bash(git worktree *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr create --draft *)",
+      "Bash(gh run view *)",
+      "Bash(gh api user *)",
+      "Bash(gh auth status *)",
+      "Bash(node ~/.ai-essentials/repo/scripts/*)"
+    ],
     "ask": [
-      "Bash(rm -rf:*)",
-      "Bash(rm -r:*)",
-      "Bash(git push --force:*)",
-      "Bash(git push -f:*)",
-      "Bash(git reset --hard:*)",
-      "Bash(git clean -fd:*)",
-      "Bash(git checkout .:*)",
-      "Bash(git branch -D:*)",
-      "Bash(sudo:*)",
-      "Bash(chmod 777:*)",
-      "Bash(npm publish:*)",
-      "Bash(yarn publish:*)",
-      "Bash(gh pr merge:*)",
-      "Bash(gh release create:*)"
+      "Bash(git reset --hard *)",
+      "Bash(git clean -fd *)",
+      "Bash(git checkout . *)",
+      "Bash(git branch -D *)",
+      "Bash(sudo *)",
+      "Bash(chmod 777 *)",
+      "Bash(npm publish *)",
+      "Bash(yarn publish *)",
+      "Bash(gh release create *)"
     ],
     "deny": [
       "Read(**/.env)",
@@ -33,11 +49,21 @@
       "Read(**/id_ed25519*)",
       "Read(**/.aws/credentials)",
       "Read(**/.ssh/**)",
-      "Bash(rm -rf /:*)",
-      "Bash(rm -rf ~:*)"
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh auth login *)",
+      "Bash(gh auth switch *)",
+      "Bash(gh auth token *)"
     ]
   },
-
+  "//attribution": "Commits and PRs are attributed to the user alone. Blank strings remove Claude's trailer and PR footer. includeCoAuthoredBy is the deprecated spelling of the same switch; kept false so an older Claude Code build behaves the same. scripts/guard/git.mjs enforces the same rule if this is ever lost.",
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "includeCoAuthoredBy": false,
+  "//hooks": "UserPromptSubmit logs corrections for memory-distill. PreToolUse(Bash) is the no-credit and draft-only guard. PostToolUse formats edited files from the repo's verification contract. Stop runs the contract and blocks the turn on failure. All three read the contract through scripts/verify; none writes into a target repo.",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -48,9 +74,40 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME\"/.claude/hooks/guard-git.mjs"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME\"/.claude/hooks/format-on-edit.mjs"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME\"/.claude/hooks/verify-on-stop.mjs"
+          }
+        ]
+      }
     ]
   },
-
   "statusLine": {
     "type": "command",
     "command": "bash /Users/marco/.claude/statusline-command.sh"

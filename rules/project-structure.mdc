@@ -10,7 +10,7 @@ Project conventions win. Read the surrounding tree first; these apply when addin
 ## Folders
 
 ❌ components/  hooks/  utils/  types/          // grouped by kind
-✅ pages/significant_events/components/streams_view/
+✅ pages/orders/components/order_list/
      streams_view.tsx  utils.ts  utils.test.ts
 Feature folders. Top-level `components/`, `hooks/`, `util/` only for genuinely cross-feature code.
 

@@ -47,7 +47,7 @@ If you reach for `straightforward`, `robust`, `seamless`, `powerful`, or `simple
 
 ## When in doubt
 
-If this is a presentation, blog post, or any writing meant to land in Marco's voice specifically: read or invoke `agents/marco-blogger.md` (from this repo or your agents install directory). The full style guide lives there. This rule is the short, always-on version that applies to everything you write.
+If this is a presentation, blog post, or any writing meant to land in Marco's voice specifically: use the `marco-blogger` agent. The full style guide lives there. This rule is the short, always-on version that applies to everything you write.
 
 ## Scope reminder
 

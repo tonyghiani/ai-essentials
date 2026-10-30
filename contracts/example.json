@@ -1,0 +1,28 @@
+{
+  "repo": "github.com/example/project",
+  "checks": [
+    {
+      "name": "typecheck",
+      "cmd": ["npx", "tsc", "--noEmit"],
+      "when": ["**/*.ts", "**/*.tsx"],
+      "timeoutSec": 300
+    },
+    {
+      "name": "lint",
+      "cmd": ["npx", "eslint", "{files}"],
+      "when": ["**/*.ts", "**/*.tsx"]
+    },
+    {
+      "name": "test",
+      "cmd": ["npx", "jest", "--findRelatedTests", "{files}"],
+      "when": ["**/*.ts", "**/*.tsx"],
+      "timeoutSec": 600
+    }
+  ],
+  "format": {
+    "cmd": ["npx", "prettier", "--write", "{file}"],
+    "when": ["**/*.{ts,tsx,json,md}"]
+  },
+  "worktree": { "copy": [".env"] },
+  "app": { "run": "npm run dev" }
+}

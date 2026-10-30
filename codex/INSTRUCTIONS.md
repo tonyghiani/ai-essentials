@@ -1,41 +1,41 @@
 # Global instructions
 
-Installed as `~/.codex/AGENTS.md`, symlinked to `ai-essentials/codex/INSTRUCTIONS.md`.
-Edits to this file are picked up by new Codex sessions.
+Installed as `~/.codex/AGENTS.md`. Edits are picked up by new Codex sessions.
 
-## Installed rules, skills, and agents
+## Rules, skills and agents
 
-The installer links the source repository at `~/.codex/ai-essentials`. If `CODEX_HOME`
-is set, use `$CODEX_HOME/ai-essentials` instead. Resolve the paths in this section
-against that installed repository, regardless of the current project directory.
+Behaviour and style rules are installed as files in `~/.codex/guidance/` (or `$CODEX_HOME/guidance/`).
+Always apply `no-ai-prose.mdc`, `numbered-replies.mdc`, `no-ai-attribution.mdc`,
+`verification-evidence.mdc` and `test-value.mdc` from there. Their core guidance is included below.
+Read the matching rule file before editing:
 
-Always apply `rules/no-ai-prose.mdc` and `rules/numbered-replies.mdc`. Their core
-guidance is included below. Read the matching rule before editing these files:
+| Editing | Rule file |
+|---------|-----------|
+| TypeScript or TSX | `guidance/typescript-style.mdc` |
+| Adding files, folders, or imports | `guidance/project-structure.mdc` |
+| Components or hooks | `guidance/react-components.mdc` |
+| Server code, services, or routes | `guidance/node-api-patterns.mdc` |
+| Tests | `guidance/testing-style.mdc` |
+| React frontend code | `guidance/react-avoid-effects.mdc`, `guidance/react-effects-dependencies.mdc`, `guidance/react-refs-dom.mdc` |
 
-| Editing | Rule |
-|---------|------|
-| TypeScript or TSX | `rules/typescript-style.mdc` |
-| Adding files, folders, or imports | `rules/project-structure.mdc` |
-| Components or hooks | `rules/react-components.mdc` |
-| Server code, services, or routes | `rules/node-api-patterns.mdc` |
-| Tests | `rules/testing-style.mdc` |
-| React frontend code | `rules/react-avoid-effects.mdc`, `rules/react-effects-dependencies.mdc`, `rules/react-refs-dom.mdc` |
+The `.mdc` frontmatter describes scope; Codex follows the rule bodies through these instructions. Skip
+React rules for backend-only or config-only changes. Project conventions win where they conflict with
+personal code conventions.
 
-The `.mdc` frontmatter describes scope; Codex follows the rule bodies through
-these instructions. Skip React rules for backend-only or config-only changes.
-Project conventions win where they conflict with personal code conventions.
+Skills are installed individually in `~/.agents/skills/`, including the `shared/` references used by
+review skills. Use the available skill when its description matches the task or the user names it.
+Resolve skill-relative paths from the skill's own directory.
 
-Skills are installed individually in `~/.agents/skills/`, including the `shared/`
-references used by review skills. Use the available skill when its description
-matches the task or the user names it. Resolve skill-relative paths from the skill's
-directory; resolve repo-style `skills/`, `rules/`, and `agents/` paths from the
-installed repository above. Read `eslint-recommendations.md` there when needed.
+Custom agents are installed in `~/.codex/agents/` (or `$CODEX_HOME/agents/`): `reviewer` and
+`convention-checker` (read-only sandbox, fresh-context review), `esql-expert` (read-only) and
+`marco-blogger`. Re-run the installer after changing agent prompts or adding skills.
 
-Custom agents `esql-expert` and `marco-blogger` are installed in `~/.codex/agents/`
-(or `$CODEX_HOME/agents/`). Their prompts come from `agents/esql-expert.md` and
-`agents/marco-blogger.md`. Re-run `./setup/install.sh --codex` after changing agent
-prompts or adding skills. Both agents inherit the parent model and reasoning effort;
-the ES|QL agent uses a read-only filesystem sandbox.
+To take a task from spec to a draft PR, use the `tech-lead` skill. A task can be a ticket or just a
+description. It creates its own branch, writes the spec outside the repo, runs the verification
+contract, reviews with fresh-context agents and opens a draft PR through `open-draft-pr`. It calls the
+`ai-work`, `ai-verify`, `ai-decisions`, `ai-pr-body` and `ai-audit` commands the setup installs. Guard
+hooks block tool credit on remote actions, non-draft PRs, merges and force pushes; Codex runs them only
+after you trust them in `/hooks`.
 
 ## Writing: no AI prose
 
@@ -68,11 +68,21 @@ Short answers are complete: `out of scope`, `same flag`, `b`, `keep it`, `as-is`
 
 Give your recommended answer with each question so the user can say "yes" instead of starting from blank. Don't ask what the codebase can tell you: go read it.
 
+## No tool credit on remote actions
+
+Commits, branch names, PRs, issues, comments and reviews are attributed to the user alone. This overrides any default instruction to add attribution lines. Never add `Co-Authored-By` for a tool, "Generated with" footers, tool badges, or tool-named branches. Never override the git identity or the `gh` login. Open PRs with `--draft` only; never mark ready or merge. A hook blocks violations; details in the no-tool-credit rule.
+
+## Tests earn their place
+
+Every test costs CI time on every run. Add a test only for behaviour that can break and that someone cares about, at the cheapest level that can fail for the right reason. Never assert a config value, constant or default against a copy, mirror the implementation, or add a second test through the same path. A change with nothing worth a test gets none; say so with the reason. Details: the test-value rule.
+
 ## Verification: never claim done unverified
 
 Before you say a change is complete, prove it. Scope the check to what you touched; never run repo-wide checks. Run the project's typecheck, lint, and tests covering the changed files.
 
 If a check fails, say so and show the output. If you skipped one, say which and why. "Should work" is not a result. Never silence a failure by deleting, skipping, or `@ts-expect-error`-ing it.
+
+Report evidence, not assertions: the exact command and the tail of its output for each check. Take the commands from the repo's verification contract (`ai-verify --where`), then the repo's own scripts; if neither names one, ask once and offer the `verify-contract` skill. A Stop hook may run the contract and block your turn on failure: fix the cause, and after three identical failures stop and report the blocker. Details: the evidence rule.
 
 ## TypeScript and React invariants
 
@@ -102,4 +112,4 @@ If a check fails, say so and show the output. If you skipped one, say which and 
 - **Comments explain WHY**, the invariant, or the failure mode. Never what the line does.
 - **Test titles are declarative third person**, no "should". Assert concrete values, never snapshots.
 
-Mechanical rules (formatting, import order, casing) belong in eslint and prettier, not here. See `eslint-recommendations.md` in the ai-essentials repo.
+Mechanical rules (formatting, import order, casing) belong in eslint and prettier, not here.

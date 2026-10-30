@@ -1,0 +1,28 @@
+---
+description: Requires evidence, not assertions, before a change is called done, and points to the per-repo verification contract. Always-applied behavioral rule.
+alwaysApply: true
+---
+
+# Verification evidence
+
+"All tests pass" on its own tells the reader almost nothing, and for a run nobody watched it is the only record there is. Report evidence.
+
+## What to report
+
+- The exact command you ran and the relevant tail of its output, for each check that applies to the change.
+- Which checks you skipped, and why.
+- A failure shown as it printed, not summarised.
+
+## Where the commands come from
+
+Never guess a repo's commands. Use, in this order:
+
+1. The repo's verification contract: `.ai/verify.json` in the repo if it is trusted, otherwise the contract the setup stores for this repo. `ai-verify --where` prints which one applies and where it is.
+2. The repo's own scripts (`package.json`, `Makefile`, project docs).
+3. If neither names a check, ask once and offer to record the answer with the `verify-contract` skill.
+
+Scope every check to the files you changed. Do not run repo-wide checks.
+
+## Hooks do the enforcing
+
+Where a Stop hook runs the contract, a failing check blocks the end of your turn and its output comes back to you. Fix the cause. Never delete, skip, or weaken a check to get past it. If the same failure comes back three times, stop and report the blocker.
