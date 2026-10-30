@@ -46,6 +46,7 @@ For each comment, extract:
 - `diff_hunk` (surrounding diff context)
 - `user.login` (who wrote it)
 - `in_reply_to_id` (thread context — fetch parent if present)
+- `html_url` (the comment's link, for recording a lesson)
 
 ### Step 3 — Gather deeper context (if needed)
 
@@ -115,6 +116,30 @@ Read and follow `../shared/pr-review-voice-marco.md`.
 ```
 **Summary**: X comments analyzed — Y accept, Z push back, W compromise
 ```
+
+## Record the lesson (the agent's own PRs)
+
+A comment a reviewer had to write on a PR the agent opened is an automation failure: the setup should have caught it first. When the PR's head branch is one the agent created (`ai-work is-agent-branch <headRefName> --cwd <a local checkout of the PR's repo>` exits 0; it cannot tell from anywhere else, so without a checkout ask the user) and the user accepts a comment, as is or as a compromise, record what it teaches:
+
+```bash
+ai-work lesson --source pr-comment --route <route> --text "<one-sentence lesson>" --ref <comment html_url>
+```
+
+The text states the general rule, not the fix: "Validate route params with the shared schema, not inline checks", not "Fixed the check in handler.ts". Skip comments that teach nothing general, such as a typo in this PR. If `ai-work` is not found, say so and skip the recording; the triage still stands.
+
+Pick the route by how the rule behaves:
+
+| The lesson is | Route |
+|---|---|
+| A rule with zero exceptions that a linter can see in the code | `lint-rule` |
+| A rule with zero exceptions about what the agent does (commands, files it touches) | `hook` |
+| A convention that holds only for some paths or file types | `path-rule` |
+| A procedure a skill keeps getting wrong | `skill-gotcha` |
+| A preference with exceptions that applies everywhere | `claude-md` |
+| A preference with exceptions tied to one project or area | `memory` |
+| A failure class worth catching automatically next time | `eval` |
+
+Say which lessons you recorded in the summary. `memory-distill` turns them into changes later; this skill only records.
 
 ## Edge cases
 

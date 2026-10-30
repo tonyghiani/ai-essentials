@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { DECLARATIVE_TASKS } from './declarative_tasks.mjs';
 import { selfTest as reviewSelfTest } from './review_eval.mjs';
 import { listTasks, loadTask, runTrial } from './run.mjs';
+import { selfTest as triggerSelfTest } from './trigger_eval.mjs';
 
 describe('eval tasks', () => {
   it('ships at least twenty tasks, each with a declared kind and a covered behaviour', () => {
@@ -32,6 +33,11 @@ describe('eval tasks', () => {
 
   it('grades every review-layer task so a known-good answer passes and a known-bad one fails', () => {
     const wrong = reviewSelfTest().filter((row) => row.expected !== row.actual);
+    assert.deepEqual(wrong, []);
+  });
+
+  it('grades every skill-trigger prompt so a stream that invokes the right skill passes and a wrong one fails', () => {
+    const wrong = triggerSelfTest().filter((row) => row.expected !== row.actual);
     assert.deepEqual(wrong, []);
   });
 

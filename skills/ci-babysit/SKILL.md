@@ -49,6 +49,20 @@ gh api repos/{owner}/{repo}/pulls/<number>/comments
 
 Do not answer them. List each new comment with the file and line, your reading of the ask, whether you would accept it, and a drafted reply in the user's voice (`review-pr-comments` has the triage method). Offer to implement accepted ones when the user says so.
 
+Every comment here sits on the agent's own PR, so one the user accepts is something the setup should have caught. When you implement it, record the lesson once. Rounds repeat and the lessons log is archived when `memory-distill` runs, so keep the comment URLs you have recorded in `<spec-dir>/babysit.json` under `lessons` and skip any already there:
+
+```bash
+ai-work lesson --source pr-comment --route <route> --text "<one-sentence general rule>" --ref <comment html_url>
+```
+
+Route by how the rule behaves: zero exceptions goes to `lint-rule` (visible in the code) or `hook` (about the agent's actions); a recurring procedure failure to `skill-gotcha`; a preference with exceptions to `claude-md` (everywhere) or `memory` (one project); a convention for some paths only to `path-rule`; a failure class worth guarding to `eval`. `review-pr-comments` has the full table.
+
 ### 5. Report
 
-One short block: PR state, checks (pass, fail, pending), what you fixed with the evidence, comments awaiting the user, and whether another round is needed. When all checks are green and nothing is pending, say so and suggest stopping the loop.
+One short block: PR state, checks (pass, fail, pending), what you fixed with the evidence, comments awaiting the user, lessons recorded, and whether another round is needed. When all checks are green and nothing is pending, say so and suggest stopping the loop.
+
+## Gotchas
+
+- Each `/loop` round starts with no memory: the retry count and the recorded lesson URLs live in `<spec-dir>/babysit.json`. Skip either and the loop retries forever or records a lesson every round.
+- `gh run view --log-failed` can be thousands of lines; read it through a subagent and keep only the failing step's excerpt.
+- A check that fails only in CI (secrets, services, OS) cannot be fixed by guessing locally. Report it with the excerpt and stop.

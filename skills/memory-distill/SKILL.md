@@ -1,6 +1,6 @@
 ---
 name: memory-distill
-description: Turn logged correction signals into durable memory files. Reads the correction log (written automatically by the log-correction-signal hook in Claude Code, Cursor and Codex whenever Marco corrects the assistant or states a preference), plus the failed-check log and overruled decisions, groups recurring themes, and proposes memory entries for approval. Invoke when the user says "distill memory", "update your memory", "what have you learned", or after a stretch of work where preferences came up.
+description: Turn logged correction signals into durable memory files. Reads the correction log (written automatically by the log-correction-signal hook in Claude Code, Cursor and Codex whenever Marco corrects the assistant or states a preference), plus the failed-check log, lessons from accepted review comments and overruled decisions, groups recurring themes, and proposes a memory, hook, rule, eval or skill gotcha for each, for approval. Invoke when the user says "distill memory", "update your memory", "what have you learned", or after a stretch of work where preferences came up.
 ---
 
 # Memory distill
@@ -25,9 +25,10 @@ Each line is `{ at, cwd, session, prompt, hits }`. If the output is empty, say s
 
 ### Step 1b — Read the other signal sources
 
-Corrections are one source. Two more feed the same pass:
+Corrections are one source. Three more feed the same pass:
 
 - **Failed checks:** `ai-work logs failures`, written by the Stop-hook gate. Each line is `{ at, repo, session, check, excerpt }`. A check that fails the same way across sessions is a missing rule, not bad luck.
+- **Lessons from review comments:** `ai-work logs lessons`, the lessons log written when a reviewer's comment on the agent's own PR was accepted. Each line is `{ at, source, route, text, ref }`. The `route` is the recorder's proposed destination; check it against the table below rather than taking it as given. A single lesson is enough for a theme: a human reviewer already had to say it once.
 - **Decisions the user overruled:** `ai-decisions list` shows precedents marked contradicted. Each is evidence that a habit stopped fitting.
 
 If a source is empty, skip it. `ai-work logs errors` lists hook crashes, which are worth a look too.
@@ -36,9 +37,11 @@ If a source is empty, skip it. `ai-work logs errors` lists hook crashes, which a
 
 Memory lives per-project at `~/.claude/projects/<slug>/memory/`. Read the relevant `MEMORY.md` index and any file that might already cover a theme. You are updating, not appending duplicates.
 
+If Claude Code's automatic memory consolidation is on (Auto-dream, shown in `/memory`; you cannot see that setting, so ask the user once and remember the answer as a memory), it already merges and prunes memory files. Leave deduplication of existing memories to it, and spend this pass on the themes that belong somewhere memory cannot enforce: hooks, deny rules, path rules, lint rules, evals and skill gotchas. Still write a memory when a theme's destination is memory.
+
 ### Step 3 — Group into themes
 
-Cluster the raw prompts. A theme needs **at least two independent occurrences**, or one very explicit standing instruction ("from now on…"). Discard:
+Cluster the raw prompts and lessons. A theme needs **at least two independent occurrences**, one very explicit standing instruction ("from now on…"), or one accepted review-comment lesson. Discard:
 
 - One-off task corrections with no general rule ("no, the other file")
 - Anything already covered by `CLAUDE.md`, a skill, or the repo's own docs
@@ -57,7 +60,7 @@ Present each candidate as:
 **Why:** <the reason it matters>
 **Evidence:** <2-3 quoted fragments from the log, with dates>
 **Action:** new file | update <existing-file.md> | supersedes <old-file.md>
-**Destination:** memory | instruction line | hook or deny rule | skill | eval task | precedent
+**Destination:** memory | instruction line | path rule | lint rule | hook or deny rule | skill gotcha | eval task | precedent
 ```
 
 Then ask which to keep, using a numbered list so a numbered reply maps by index.
@@ -90,6 +93,7 @@ After distilling, archive the consumed lines so the next run starts clean:
 
 ```bash
 ai-work logs corrections --archive > /dev/null
+ai-work logs lessons --archive > /dev/null
 [ -f ~/.claude/memory-signal.jsonl ] && mv ~/.claude/memory-signal.jsonl ~/.claude/memory-signal.$(date +%Y%m%d).jsonl.bak
 ```
 
@@ -102,8 +106,11 @@ Match the theme to the cheapest place that enforces it, following the docs' spli
 | The theme | Destination |
 |---|---|
 | A preference with exceptions | A memory file, or one line in the global instructions if it applies everywhere |
-| A rule with zero exceptions (never edit generated files, always run the formatter) | A hook or deny rule, not a memory |
+| A rule with zero exceptions about what the agent does (never edit generated files, always run the formatter) | A hook or deny rule, not a memory |
+| A rule with zero exceptions a linter can see in the code | A lint rule |
+| A convention that holds only for some paths or file types | A path-scoped rule |
 | A multi-step procedure repeated across sessions | A skill, or an edit to an existing one |
+| A procedure an existing skill keeps getting wrong | A gotcha in that skill |
 | A failure class that keeps recurring (same check failing across sessions) | An eval task, so a regression is caught |
 | A decision the user keeps making the same way for the same situation | A precedent: `ai-decisions add --class ... --situation ... --decision ... --why ...` |
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * Capability evals for the review layer: do the `reviewer` and
- * `convention-checker` agents catch a planted defect, and do they stay quiet on
- * a clean change? The delivery evals (run.mjs) grade what an agent did to a
+ * `convention-checker` agents catch a planted defect, do they stay quiet on
+ * a clean change, and does the `skeptic` agent confirm a real finding and
+ * refute a false one? The delivery evals (run.mjs) grade what an agent did to a
  * repo; these grade what a reviewer says about a diff, because a reviewer that
  * quietly stops catching bugs is the failure nothing else in the setup notices.
  *
@@ -17,10 +18,11 @@
  * that cannot fail is caught for free.
  *
  * @typedef {{ file: string, marker: string }} IFlag A defect at the line of `file` containing `marker`.
- * @typedef {{ flags: IFlag[] } | { clean: true } | { pass: true }} IReviewExpect
+ * @typedef {{ flags: IFlag[] } | { clean: true } | { pass: true } | { verdict: 'CONFIRMED' | 'REFUTED' }} IReviewExpect
+ * @typedef {IFlag & { text: string }} IFinding A finding handed to the skeptic; `{line}` in `text` becomes the marker's line.
  * @typedef {{
- *   id: string, agent: 'reviewer' | 'convention-checker', covers: string,
- *   spec?: string, rules?: string[], base: Record<string, string>, change: Record<string, string>,
+ *   id: string, agent: 'reviewer' | 'convention-checker' | 'skeptic', covers: string,
+ *   spec?: string, rules?: string[], finding?: IFinding, base: Record<string, string>, change: Record<string, string>,
  *   expect: IReviewExpect, samples: { good: string, bad: string },
  * }} IReviewTask
  */
@@ -51,13 +53,32 @@ export function page(items, index, size) {
 }
 `;
 
+const PAGINATE_SPEC = '# Spec\n\n## Requirements\n\n- `page(items, index, size)` returns the `size` items starting at `index * size` (index is zero-based).\n- The last page may be shorter.\n';
+
+const MEAN_UNGUARDED = `/** Mean of the values. */
+export function mean(values) {
+  const total = values.reduce((sum, value) => sum + value, 0);
+  return total / values.length;
+}
+`;
+
+const MEAN_CORRECT = `/** Mean of the values, or null when there are none. */
+export function mean(values) {
+  if (values.length === 0) {
+    return null;
+  }
+  const total = values.reduce((sum, value) => sum + value, 0);
+  return total / values.length;
+}
+`;
+
 /** @type {IReviewTask[]} */
 export const REVIEW_TASKS = [
   {
     id: 'reviewer-catches-off-by-one',
     agent: 'reviewer',
     covers: 'the reviewer reports a wrong slice bound that drops the last item of every page',
-    spec: '# Spec\n\n## Requirements\n\n- `page(items, index, size)` returns the `size` items starting at `index * size` (index is zero-based).\n- The last page may be shorter.\n',
+    spec: PAGINATE_SPEC,
     base: { 'src/paginate.js': PAGINATE_BASE },
     change: { 'src/paginate.js': PAGINATE_BUGGY },
     expect: { flags: [{ file: 'src/paginate.js', marker: 'start + size - 1' }] },
@@ -103,6 +124,41 @@ export const REVIEW_TASKS = [
     samples: {
       good: 'PASS\nChecked 1 files against: typescript-style.mdc.',
       bad: 'src/status.ts:3 typescript-style.mdc "interfaces over types": uses a type alias\nChecked 1 files against: typescript-style.mdc.',
+    },
+  },
+  {
+    id: 'skeptic-confirms-a-real-bug',
+    agent: 'skeptic',
+    covers: 'the skeptic confirms a true finding instead of explaining it away',
+    spec: PAGINATE_SPEC,
+    finding: {
+      file: 'src/paginate.js',
+      marker: 'start + size - 1',
+      text: '[Critical] `src/paginate.js:{line}` -- the slice end `start + size - 1` drops the last item of every page; use `start + size`.',
+    },
+    base: { 'src/paginate.js': PAGINATE_BASE },
+    change: { 'src/paginate.js': PAGINATE_BUGGY },
+    expect: { verdict: 'CONFIRMED' },
+    samples: {
+      good: '### src/paginate.js:{line}\nVerdict: CONFIRMED\nEvidence: page([1, 2, 3], 0, 3) slices (0, 2) and returns [1, 2]; the spec asks for 3 items.',
+      bad: '### src/paginate.js:{line}\nVerdict: REFUTED\nEvidence: slice excludes its end index, so the bound is intended.',
+    },
+  },
+  {
+    id: 'skeptic-refutes-a-false-finding',
+    agent: 'skeptic',
+    covers: 'the skeptic refutes a plausible finding that an earlier guard in the same function rules out',
+    finding: {
+      file: 'src/mean.js',
+      marker: 'total / values.length',
+      text: '[Critical] `src/mean.js:{line}` -- divides by `values.length`, so `mean([])` returns NaN instead of the documented null.',
+    },
+    base: { 'src/mean.js': MEAN_UNGUARDED },
+    change: { 'src/mean.js': MEAN_CORRECT },
+    expect: { verdict: 'REFUTED' },
+    samples: {
+      good: '### src/mean.js:{line}\nVerdict: REFUTED\nEvidence: src/mean.js:3 returns null when values.length === 0, so the division never sees an empty list.',
+      bad: '### src/mean.js:{line}\nVerdict: CONFIRMED\nEvidence: values.length can be 0.',
     },
   },
 ];
@@ -154,6 +210,16 @@ export function gradeReview(task, output) {
   if ('pass' in task.expect && !/^\s*PASS\s*$/m.test(output)) {
     reasons.push('did not answer PASS on a conforming change');
   }
+  if ('verdict' in task.expect) {
+    const expected = task.expect.verdict;
+    // Only `Verdict:` lines count: the evidence may mention the other words in passing.
+    const verdicts = [...output.matchAll(/^\W*verdict\W*\s*(CONFIRMED|REFUTED|UNSURE)\b/gim)].map((match) => match[1].toUpperCase());
+    if (verdicts.length === 0) {
+      reasons.push('gave no Verdict line');
+    } else if (verdicts.some((verdict) => verdict !== expected)) {
+      reasons.push(`answered ${verdicts.join(', ')} where ${expected} was expected`);
+    }
+  }
   return { pass: reasons.length === 0, reasons };
 }
 
@@ -163,9 +229,18 @@ export function gradeReview(task, output) {
  * @returns {string} The sample answer with {line} filled in from the planted defect.
  */
 function sample(task, which) {
-  const [flag] = 'flags' in task.expect ? task.expect.flags : [];
+  return fillLine(task, task.samples[which]);
+}
+
+/**
+ * @param {IReviewTask} task
+ * @param {string} text
+ * @returns {string} `text` with {line} replaced by the line of the planted defect or the finding's marker.
+ */
+function fillLine(task, text) {
+  const flag = 'flags' in task.expect ? task.expect.flags[0] : task.finding;
   const line = flag === undefined ? 1 : markerLine(task, flag);
-  return task.samples[which].replaceAll('{line}', String(line));
+  return text.replaceAll('{line}', String(line));
 }
 
 /** @returns {Array<{ id: string, sample: string, expected: boolean, actual: boolean, reasons: string[] }>} */
@@ -224,6 +299,9 @@ export function runReviewTrial(task) {
     }
     if (task.rules !== undefined) {
       lines.push(`Rule files: ${task.rules.map((rule) => join(repoHome(), 'rules', rule)).join(', ')}`);
+    }
+    if (task.finding !== undefined) {
+      lines.push('', 'Findings to verify:', fillLine(task, task.finding.text));
     }
     const result = spawnSync(
       'claude',

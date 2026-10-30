@@ -2,8 +2,8 @@
 name: review-team
 description: >-
   Runs a panel of three to six read-only reviewers in parallel, each with a
-  distinct perspective, and consolidates their findings into one prioritized
-  report. Use when the user says "review team", "multi-perspective review" or
+  distinct perspective, has a skeptic try to disprove every serious finding,
+  and consolidates what survives into one prioritized report. Use when the user says "review team", "multi-perspective review" or
   "multi-angle review" of branch changes, a module or a plan, and when the
   tech-lead skill meets a large or risky diff.
 ---
@@ -11,7 +11,8 @@ description: >-
 # Review Team
 
 Launch the selected reviewers in parallel, each with a distinct perspective,
-then consolidate findings into a single prioritized report.
+verify their Critical and Important findings against the code, then
+consolidate what survives into a single prioritized report.
 
 ## Reviewers
 
@@ -38,7 +39,7 @@ installed it. If a read fails, `ls` the skill directory rather than guessing.
 
 ## When to use, and when not to
 
-Each reviewer is a full agent run. Use this skill when the user asks for it, or when the tech-lead skill finds a large or risky change: roughly 400 or more changed lines, or a change in an always-ask class. For the inner loop of a delivery use the `reviewer` and `convention-checker` agents alone; they are cheaper and read-only.
+Each reviewer is a full agent run, and verification (Step 3b) adds one cheaper run per file with Critical or Important findings, capped at 10 findings. Use this skill when the user asks for it, or when the tech-lead skill finds a large or risky change: roughly 400 or more changed lines, or a change in an always-ask class. For the inner loop of a delivery use the `reviewer` and `convention-checker` agents alone; they are cheaper and read-only.
 
 ## Mode detection
 
@@ -223,9 +224,42 @@ If PREVIOUS FINDINGS were provided, prefix each re-reported finding with
 [PERSISTS] or [EVOLVED]. New findings have no prefix.
 ```
 
+### Step 3b -- Verify Critical and Important findings
+
+Reviewers asked to find problems report some that are wrong: a guard they
+missed, a caller that never passes the bad input. Before anything reaches the
+report, the `skeptic` agent tries to disprove each Critical and Important
+finding against the code. Minor findings skip this step.
+
+1. Collect every Critical and Important finding. The `reviewer` agent's
+   `[blocks]` counts as Critical and `[gap]` as Important. Merge findings that
+   cite the same location, so one defect is verified once.
+2. A `[PERSISTS]` finding that was CONFIRMED in the previous run keeps that
+   verdict and is not sent again.
+3. **Cap: at most 10 findings verified per review.** Pick Critical before
+   Important, then findings raised by more than one reviewer. The rest go into
+   the report labelled `[unverified]`.
+4. Group the selected findings by file and launch one `skeptic` run per file,
+   in parallel. Each brief carries the repo root, the patch path (and the spec
+   path when the review runs inside a delivery), and that file's findings
+   pasted verbatim with severity, location and claim. Give it nothing else:
+   not the reviewer's reasoning, not the PR description.
+5. Read each verdict:
+   - **CONFIRMED**: keep the finding. If the skeptic corrected the line or the
+     severity, use its version.
+   - **REFUTED**: drop the finding from the report and the action plan.
+   - **UNSURE**: keep it, labelled `[UNSURE]`, with the skeptic's one-line
+     reason.
+
+In plan review mode, verify only findings that make a claim about existing
+code; a finding about the plan itself has nothing to check against.
+
+In Claude Code, `skeptic` is an agent type. Elsewhere, run it the way Step 3
+runs reviewers, read-only.
+
 ### Step 4 -- Consolidate
 
-After every selected reviewer returns:
+After every selected reviewer returns and Step 3b has verified its findings:
 
 1. Group findings by file path, then by line number / range.
 2. When two or more reviewers flag the same location, merge into one item
@@ -245,6 +279,8 @@ Present the final report as:
 ```markdown
 # Review Team Report
 
+Verification: 8 checked, 5 confirmed, 2 refuted (dropped), 1 unsure; 3 unverified (over the cap).
+
 <!-- include Resolved section only on re-runs -->
 ## Resolved (fixed since last run)
 - ~~`file:line` [Reviewer1] -- previous finding that is now fixed~~
@@ -256,6 +292,8 @@ Present the final report as:
 ## Important
 - `file:line` [Reviewer1] -- finding
 - `file:line` [EVOLVED] [Reviewer1] -- related to previous finding, changed form
+- `file:line` [UNSURE] [Reviewer2] -- finding (skeptic: depends on runtime config it could not read)
+- `file:line` [unverified] [Reviewer3] -- finding past the verification cap
 
 ## Minor
 - `file:line` [Reviewer1] -- finding
@@ -289,6 +327,9 @@ Example:
 - [ ] `other/file.js:10-12` (**Important** [PERSISTS], flagged by Reviewer3): Refactor duplicated code into a shared helper function.
 ```
 
+`[UNSURE]` and `[unverified]` labels carry through to the action plan too, so
+the user knows which items to check before acting.
+
 On re-runs, `[PERSISTS]` / `[EVOLVED]` tags carry through to the action plan so
 the user can see which items are new versus still outstanding from a prior pass.
 Omit resolved items from the action plan (they appear in the Resolved section
@@ -299,3 +340,9 @@ If there are relevant reviewer-supplied remediation suggestions or links, includ
 ---
 
 If ALL sections are empty, report: "No findings -- all reviewers passed."
+
+## Gotchas
+
+- Fresh Eyes is only useful blind: one sentence of the PR description in its prompt and it reviews the intent instead of the code.
+- Pasting file contents into every reviewer prompt multiplies the cost by the panel size; pass paths and let reviewers read what their focus needs.
+- The skeptic is capped at 10 findings per run. When more serious findings come back, the panel was asked too broad a question; narrow the scope rather than raising the cap.
