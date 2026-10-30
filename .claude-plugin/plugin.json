@@ -1,0 +1,17 @@
+{
+  "name": "ai-essentials",
+  "displayName": "AI Essentials",
+  "version": "1.0.0",
+  "description": "Delegation for Claude Code: a tech lead that takes a ticket to a verified draft PR, a Stop gate that runs the repo's checks, a no-tool-credit and draft-only guard, fresh-context reviewers, an app verifier that reuses a running instance, and a read-only end-of-day triage.",
+  "author": { "name": "Marco Antonio Ghiani" },
+  "repository": "https://github.com/tonyghiani/ai-essentials",
+  "license": "MIT",
+  "keywords": ["delegation", "verification", "code-review", "guardrails"],
+  "agents": [
+    "./claude/agents/reviewer.md",
+    "./claude/agents/convention-checker.md",
+    "./claude/agents/skeptic.md",
+    "./claude/agents/judge.md"
+  ],
+  "hooks": "./claude/plugin-hooks.json"
+}

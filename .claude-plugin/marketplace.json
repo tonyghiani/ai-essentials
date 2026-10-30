@@ -1,0 +1,37 @@
+{
+  "name": "ai-essentials",
+  "owner": { "name": "Marco Antonio Ghiani" },
+  "description": "Marco's delivery setup for Claude Code: ticket to verified draft PR, with deterministic gates and fresh-context review.",
+  "plugins": [
+    {
+      "name": "ai-essentials",
+      "source": "./",
+      "description": "Ticket to verified draft PR, with deterministic gates. The portable skills only: personal voice and personal style skills stay in the repo for the symlink install.",
+      "skills": [
+        "./skills/tech-lead",
+        "./skills/deliver",
+        "./skills/open-draft-pr",
+        "./skills/verify-contract",
+        "./skills/verify-app",
+        "./skills/ci-babysit",
+        "./skills/review-team",
+        "./skills/best-of-two",
+        "./skills/explain-pr",
+        "./skills/grill-me",
+        "./skills/deep-research",
+        "./skills/tdd",
+        "./skills/branch-refactor-planner",
+        "./skills/pr-description-template",
+        "./skills/gh-issue-writer",
+        "./skills/resolve-merge-conflicts",
+        "./skills/a11y-audit",
+        "./skills/i18n-sweep",
+        "./skills/dep-size",
+        "./skills/react-perf",
+        "./skills/react-patterns",
+        "./skills/api-contract-review",
+        "./skills/daily-triage"
+      ]
+    }
+  ]
+}

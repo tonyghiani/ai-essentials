@@ -120,7 +120,21 @@ if command -v python3 &>/dev/null; then
       err "agents do not render for $tool: $render_output"
     fi
   done
+  # The plugin ships the rendered Claude agents it lists (a plugin cannot render at install), so each
+  # committed copy must match a fresh render. Personal agents are not shipped and not committed.
+  for shipped in "$ROOT"/claude/agents/*.md; do
+    if ! cmp -s "$shipped" "$render_tmp/claude/$(basename "$shipped")"; then
+      err "$(basename "$shipped") in claude/agents is stale; re-render it with setup/render_agents.py"
+    fi
+  done
   rm -rf "$render_tmp"
+fi
+
+# The plugin manifest, its hook file and every path they name must load.
+if command -v claude &>/dev/null; then
+  if ! plugin_output="$(cd "$ROOT" && claude plugin validate . 2>&1)" || ! grep -q 'Validation passed' <<<"$plugin_output"; then
+    err "claude plugin validate failed: $(grep -E '✘|Error' <<<"$plugin_output" | head -5)"
+  fi
 fi
 
 # Permission references must match policy/guardrails.json.
