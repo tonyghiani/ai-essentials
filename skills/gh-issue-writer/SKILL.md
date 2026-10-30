@@ -1,6 +1,7 @@
 ---
 name: gh-issue-writer
 description: Generate well-formatted GitHub issue content from a brief context, feature request, or bug report. Outputs ready-to-copy Markdown — does not create the issue. Use when the user asks to write a GitHub issue, draft an issue, create issue content, or mentions "gh issue".
+effort: low
 ---
 
 # GitHub Issue Writer

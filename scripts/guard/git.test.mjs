@@ -9,6 +9,8 @@ import { findAttribution, findBranchPrefix, isToolIdentity } from './attribution
 import { auditBranch } from './audit_branch.mjs';
 import { repoRoot } from '../lib/repo.mjs';
 import { registerBranch } from '../work/branches.mjs';
+import { stateDir } from '../lib/state.mjs';
+import { checkEditScope } from './edit_scope.mjs';
 import { checkCommand } from './git.mjs';
 
 const REPO_HOME = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -205,6 +207,14 @@ describe('recursive delete and scratch space', () => {
 
   it('never lets a temp root itself be deleted', () => {
     assert.equal(checkCommand({ command: 'rm -rf /tmp', cwd: REPO_HOME }).rule, 'rm-outside-repo');
+  });
+});
+
+describe('edit scope during a delivery', () => {
+  it('allows edits inside the repository and the state directory, and refuses a sibling checkout', () => {
+    assert.equal(checkEditScope({ filePath: 'src/a.ts', cwd: ctx.repo }).allow, true);
+    assert.equal(checkEditScope({ filePath: join(stateDir(), 'specs', 'x', 'SPEC.md'), cwd: ctx.repo }).allow, true);
+    assert.equal(checkEditScope({ filePath: join(REPO_HOME, 'README.md'), cwd: ctx.repo }).allow, false);
   });
 });
 

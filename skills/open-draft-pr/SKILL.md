@@ -1,6 +1,7 @@
 ---
 name: open-draft-pr
-description: Push the agent's own branch and open a draft pull request attributed to the user alone, after auditing commits and body for tool credit and confirming checks pass. Never marks a PR ready and never merges. Use at the end of a delivery, or when the user says "open a draft PR", "push this as a draft".
+description: Pushes the agent's own branch and opens a draft pull request attributed to the user alone, after auditing commits and body for tool credit and confirming checks pass. Never marks a PR ready and never merges. Use at the end of a delivery, or when the user says "open a draft PR", "push this as a draft".
+allowed-tools: Bash(git status *) Bash(git log *) Bash(ai-work *) Bash(ai-verify *)
 ---
 
 # Open draft PR
@@ -10,6 +11,17 @@ The last step of a delivery. It does one thing: put the finished branch on the r
 ## Commands
 
 This skill calls `ai-work`, `ai-verify`, `ai-pr-body` and `ai-audit`. If a command is not found, tell the user the setup is not installed and stop; do not improvise a replacement.
+
+## Where you start
+
+Gathered when this skill started (in a tool that does not run these, run them yourself):
+
+```!
+git status --short --branch || true
+git log --oneline -10
+ai-work is-agent-branch && echo "agent branch: yes" || echo "agent branch: no"
+ai-work task list || true
+```
 
 ## Hard limits
 
@@ -69,3 +81,10 @@ Print the PR URL, the audit result, and the verification evidence. Say that the 
 ## If something is blocked
 
 A guard hook may refuse a command and print a reason. Fix the text or the command so it complies; do not look for another route to the same outcome.
+
+## Gotchas
+
+- The guard reads command text. `gh pr create` without `--draft`, or `gh pr new`, is refused, and so is a body that lacks the template headings; pass the body built by `ai-pr-body` with `--body-file` rather than inline.
+- Any shell command whose text mentions a PR command or a trailer-like line (`Co-authored-by: ...`), such as a heredoc writing notes, is refused even though it opens nothing. Write such files with the editor tools.
+- `git push origin HEAD` while on a default branch is refused; push from the agent's branch by name.
+- `ai-audit` fails, not passes, when the base does not resolve. On a detached checkout pass the base commit explicitly.

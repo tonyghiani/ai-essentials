@@ -1,6 +1,7 @@
 ---
 name: grill-me
 description: Interviews the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree before any code is written, and writes the agreed spec. Use when the user says "grill me", "roast me", "ask me until we agree 100%", "stress-test this plan" or "interview me", and when the tech-lead skill runs its spec stage.
+effort: high
 ---
 
 # Grill Me

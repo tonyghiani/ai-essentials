@@ -55,3 +55,9 @@ Follow the global verification rule: no repo-wide checks.
 ## 6. Report
 
 Per conflicted file: one line on why it conflicted and how you resolved it. Then the checks you ran with results, anything you skipped and why, and the pushed commit hash.
+
+## Gotchas
+
+- Merge the base in; never rebase a pushed branch. A rebase needs a force push, which the guard refuses.
+- Lockfiles: take the base's version, then re-run the install so the lockfile matches the merged manifest. A hand-merged lockfile is one no package manager wrote.
+- A clean textual merge can still break: run the scoped checks on files that merged without conflicts too, when they import something the base changed.

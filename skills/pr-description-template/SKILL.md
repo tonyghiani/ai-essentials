@@ -1,6 +1,7 @@
 ---
 name: pr-description-template
 description: Writes pull request description text from a fixed template with a concise title, a mixed paragraph-and-bullets summary section, and testing bullets. Returns text only; opening the PR is open-draft-pr's job. Use when the user asks to write a PR description, PR body or pull request summary.
+effort: low
 ---
 # PR Description Template
 
@@ -75,3 +76,7 @@ Whoever calls this skill (including `tech-lead` and `open-draft-pr`), the output
 ## Attribution
 
 The text is the user's. Add no footer, badge, "generated" note or tool name as author (the no-tool-credit rule).
+
+## Gotchas
+
+- The heading icons are part of the template. `ai-pr-body` and the guard check them, so a body with a plain `## Summary` heading is refused when the PR is opened.

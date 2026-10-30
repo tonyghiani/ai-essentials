@@ -1,9 +1,18 @@
 ---
 name: react-perf
 description: Audit React render performance from the code, prioritised by measured or measurable impact. Invoke when the user reports a slow or janky UI, asks about re-renders, mentions memo/useMemo/useCallback, or asks for a perf review of a component tree. Refuses to recommend memoisation without a reason.
+context: fork
+agent: Explore
+background: false
 ---
 
 # React render perf audit
+
+## Target
+
+What the caller passed: $ARGUMENTS
+
+This runs as a separate read-only agent that has not seen the conversation, so the target above and the repository are all it has. When the target is empty, audit the current branch's change: the files in `git diff --name-only --merge-base origin/HEAD` (or against the base the caller named), read in full. Report findings; never edit.
 
 Most React perf advice is cargo cult. This skill only reports things with a plausible mechanism and a way to confirm.
 

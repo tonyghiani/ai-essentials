@@ -1,9 +1,18 @@
 ---
 name: dep-size
 description: Check what a dependency or import actually costs before adding it, and find bundle bloat in existing code. Invoke when adding a package, when the user asks whether a dependency is worth it, when a bundle-size check fails in CI, or when reviewing imports in browser-shipped code.
+context: fork
+agent: Explore
+background: false
 ---
 
 # Dependency and bundle cost
+
+## Target
+
+What the caller passed: $ARGUMENTS
+
+This runs as a separate read-only agent that has not seen the conversation, so the target above and the repository are all it has. When the target is empty, audit the current branch's change: the files in `git diff --name-only --merge-base origin/HEAD` (or against the base the caller named), read in full. Report findings; never edit.
 
 Two jobs: decide whether a new dependency earns its place, and find the ones that already didn't.
 

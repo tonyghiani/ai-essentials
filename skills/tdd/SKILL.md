@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Writes the failing test first, then the implementation, in Marco's testing style. Use when the user says "tdd", "test first" or "write the test first", and when the deliver skill adds a test worth its CI cost.
+description: Writes the failing test first, then the implementation, in Marco's testing style. Use whenever the user asks for the test before the code, in any wording ("tdd", "test first", "write the failing test first, then implement..."), and when the deliver skill adds a test worth its CI cost.
 ---
 
 # TDD loop

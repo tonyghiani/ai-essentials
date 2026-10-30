@@ -1,9 +1,18 @@
 ---
 name: api-contract-review
 description: Review an HTTP route, plugin contract, or exported package API for compatibility, validation, and evolvability before it ships. Invoke when adding or changing a route, a plugin setup/start contract, a saved object schema, or a package public export, and when the user asks whether a change is breaking.
+context: fork
+agent: Explore
+background: false
 ---
 
 # API contract review
+
+## Target
+
+What the caller passed: $ARGUMENTS
+
+This runs as a separate read-only agent that has not seen the conversation, so the target above and the repository are all it has. When the target is empty, audit the current branch's change: the files in `git diff --name-only --merge-base origin/HEAD` (or against the base the caller named), read in full. Report findings; never edit.
 
 A contract is the part you can't take back. Review it before it merges, not after someone depends on it.
 

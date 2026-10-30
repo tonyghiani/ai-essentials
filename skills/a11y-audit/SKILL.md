@@ -1,9 +1,18 @@
 ---
 name: a11y-audit
 description: Audit UI code for accessibility defects that block keyboard and screen-reader users. Invoke when adding or reviewing interactive UI, a form, a modal or flyout, a custom control, or when the user asks about a11y, WCAG, screen readers, or keyboard navigation.
+context: fork
+agent: Explore
+background: false
 ---
 
 # Accessibility audit
+
+## Target
+
+What the caller passed: $ARGUMENTS
+
+This runs as a separate read-only agent that has not seen the conversation, so the target above and the repository are all it has. When the target is empty, audit the current branch's change: the files in `git diff --name-only --merge-base origin/HEAD` (or against the base the caller named), read in full. Report findings; never edit.
 
 Order findings by who gets blocked. A keyboard trap stops work entirely; a missing `aria-describedby` is a degradation.
 

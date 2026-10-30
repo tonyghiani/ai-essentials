@@ -1,9 +1,18 @@
 ---
 name: i18n-sweep
 description: Find untranslated user-facing strings and i18n defects that break translation. Invoke when adding UI copy, when an i18n check fails, or when the user asks to review translations, hardcoded strings, or localisation.
+context: fork
+agent: Explore
+background: false
 ---
 
 # i18n sweep
+
+## Target
+
+What the caller passed: $ARGUMENTS
+
+This runs as a separate read-only agent that has not seen the conversation, so the target above and the repository are all it has. When the target is empty, audit the current branch's change: the files in `git diff --name-only --merge-base origin/HEAD` (or against the base the caller named), read in full. Report findings; never edit.
 
 Two failure modes: strings that were never wrapped, and strings that were wrapped in a way translators can't work with. The second is more expensive because it looks done.
 

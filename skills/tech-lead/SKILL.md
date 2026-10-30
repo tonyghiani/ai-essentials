@@ -2,11 +2,30 @@
 name: tech-lead
 description: Takes a task from spec to a verified draft PR, working mostly autonomously. The task can be a ticket or issue link, or just a plain description with no ticket at all. Interviews the user on the spec, sizes the work, routes each piece to the right skill or fresh-context agent, runs verification and review, and hands off a draft PR. Started by the user with /tech-lead, or by ai-delegate.
 disable-model-invocation: true
+argument-hint: "[ticket link, pasted ticket, or a plain description]"
+effort: high
+allowed-tools: Bash(git status *) Bash(ai-verify *) Bash(ai-work *) Bash(ai-decisions *)
+hooks:
+  PreToolUse:
+    - matcher: "Edit|Write"
+      hooks:
+        - type: command
+          command: 'f="$HOME/.claude/hooks/edit-scope.mjs"; if [ -f "$f" ]; then exec node "$f"; fi'
 ---
 
 # Tech lead
 
 You own a task from the first question to a draft PR. The task arrives as whatever the user gives you: an issue or ticket link, a pasted ticket, a plain description in their own words, or a mix. A ticket is never required. The user stays in the loop for decisions only they should make; everything else you settle yourself and report afterwards. You are not a persona. You are a process that routes work to the skills and agents that already exist and checks the result.
+
+## Where you start
+
+Gathered when this skill started (in a tool that does not run these, run them yourself):
+
+```!
+git status --short --branch || true
+ai-verify --where || true
+ai-decisions classes || true
+```
 
 ## Commands
 
@@ -57,6 +76,14 @@ It creates `<github-login>/<slug>` from the current HEAD, records it as yours, a
 
 Run `grill-me`, writing to `<spec-dir>/SPEC.md` in the format that skill defines: goal, requirements, edge cases, out of scope, tasks with checkable acceptance criteria. When the request is a short description, derive the first draft of the spec from it and the code yourself, then ask about the gaps instead of starting from a blank interview.
 
+The spec is where the user's review time is best spent: a wrong line in a 200-line plan becomes hundreds of wrong lines of code. So shape it for review:
+
+- Lead with the decisions most likely to change (data shape, public API, where the logic lives); put mechanical steps (renames, wiring, moves) last.
+- Before the interview, do a blind-spot pass: list what the user probably has not considered, given what they told you, and fold the real ones into the questions.
+- Ask in rounds, architecture first: the first round holds only the questions whose answers would change the design (numbered, each with your recommendation); the rest wait until those are settled, because their answers often make later questions moot.
+- For a visual or UX choice, offer two to four very different sketches (an HTML page if the tool can publish one) for the user to react to, instead of describing options in prose.
+- Add each task to the branch's ledger: `ai-work task add <id> "<title>"`.
+
 Make every question answerable in one word: numbered, with your recommended answer. Before asking one, check whether the decision is already made:
 
 - a rule or `marco-code-style` states it, or
@@ -68,7 +95,8 @@ If so, decide and move on. If the class is always-ask, ask even when a precedent
 
 - One task, or tasks that touch the same files: do it yourself in order, in this session.
 - Tasks that touch disjoint files and do not depend on each other: they can run in parallel, each in its own worktree and branch, at most 4 at once. Commit anything the tasks build on first, since each branches from your branch's last commit, then start each task with `ai-delegate --tool <tool> --spec <spec-dir>/SPEC.md --task <id> --base <your-branch> "<brief>"`. The brief carries what step 5 lists that the spec does not. Each run implements its one task with `deliver`, commits, and pushes nothing.
-- When they finish, read each JSON summary: `questions: true` means the run stopped on an always-ask question (in its spec directory's `questions.md`), so put it to the user. Merge each clean branch into yours with `git merge --no-ff`, run the contract on the result, and open the one draft PR yourself. Remove the worktrees with `ai-delegate --remove`.
+- When they finish, read each JSON summary: `questions: true` means the run stopped on an always-ask question (in its spec directory's `questions.md`), so put it to the user. Merge each clean branch into yours with `git merge --no-ff`, run the contract on the result, then mark the task in your own ledger: `ai-work task pass <id> --evidence "merged <branch>; child verify ok; <contract command> after merge: <result>"`. Copy each child's `implementation-notes.md` (in its `specDir`) into yours, then open the one draft PR yourself. Remove the worktrees with `ai-delegate --remove`.
+- Fan-out is for interactive sessions. In an unattended run (you were started by `ai-delegate`), do the tasks in order yourself: the run's sandbox cannot create sibling worktrees, and nobody can answer a child's question.
 - Never run several agents inside one task. A subagent is for a fresh reviewer, noisy output, or a read-only search.
 
 ### 4. Route
@@ -86,7 +114,9 @@ Decide who does each piece by looking at it, not by asking the user whether to d
 | Render-heavy components | `react-perf` |
 | Route, plugin contract, schema or exported API | `api-contract-review`, and ask (class `api-contract`) |
 | ES\|QL queries | the `esql-expert` agent |
-| Review of the finished change | `reviewer` plus `convention-checker` agents (fresh context); `review-team` only for large or risky diffs |
+| Proving runtime behaviour | `verify-app` (reuses a running instance; before and after table) |
+| A task in an always-ask class whose decision is settled but whose implementation is easy to get wrong | `best-of-two`: two attempts and the `judge` agent. Twice the cost, so only there |
+| Review of the finished change | `reviewer` plus `convention-checker` agents (fresh context); `review-team` only for large or risky diffs (it adds a `skeptic` pass that drops findings it can disprove) |
 | Conflicts with the base branch | `resolve-merge-conflicts` |
 | Follow-ups outside the spec | Draft with `gh-issue-writer`; never file them |
 
@@ -128,7 +158,7 @@ The Stop hook runs the contract on every turn and blocks a failing one. Fix the 
 
 1. Write the PR description with `pr-description-template` to `<spec-dir>/pr-description.md`. Follow the template exactly, heading icons included; no extra sections.
 2. Run `open-draft-pr`. It validates the body against the template with `ai-pr-body`, audits the commits and body, pushes the branch, and opens the draft. The guard refuses a PR from your branch whose body lacks the template headings.
-3. Report to the user: what changed, the evidence (commands and output), follow-ups drafted but not filed, and the draft PR link. Keep it short.
+3. Report to the user: what changed, the evidence (commands and output), the implementation notes, follow-ups drafted but not filed, and the draft PR link. Keep it short. End by offering `/explain-pr`: a short quiz on the change, so the user can defend it in review before marking it ready.
 
 ### 9. Learn
 
@@ -139,6 +169,13 @@ ai-decisions record --class <class> --outcome approved|edited|overruled --preced
 ```
 
 Approved decisions add a confirmation; an edit or overrule marks the precedent contradicted and resets the gate counter for its class. Repeated corrections go to `memory-distill`.
+
+## Gotchas
+
+- Unattended runs (`ai-delegate`) cannot end while a ledger task is open, and a separate model checks the last message for evidence. A run that "finishes" with prose and no command output is sent back.
+- A dirty working tree stops `ai-work branch` with exit 3. Ask; never stash or discard the user's work.
+- `ai-delegate --task` children start from your branch's last commit, not your working tree: commit what they build on first.
+- Each `ai-delegate` child has its own spec directory. Its `questions.md` is not yours; read every child's summary for `questions: true`.
 
 ## When you are stuck
 
