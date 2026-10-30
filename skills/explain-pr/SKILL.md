@@ -1,6 +1,7 @@
 ---
 name: explain-pr
 description: Explains a branch or draft PR the agent produced (what changed and why, the riskiest part, what the tests prove and what they miss), then quizzes the user with three to five questions they would need to answer to defend it in review, and scores the answers. A comprehension gate before the user marks a PR ready. Started by the user with /explain-pr, optionally followed by a PR number, URL or branch.
+effort: low
 disable-model-invocation: true
 ---
 

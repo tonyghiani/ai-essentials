@@ -96,6 +96,16 @@ class RenderNeutralAgentTest(unittest.TestCase):
             "First line of a folded description with: a colon.",
         )
 
+    def test_claude_gets_the_effort_when_one_is_set(self):
+        (self.repo / "agents" / "probe.md").write_text(NEUTRAL.replace("tier: fast\n", "tier: fast\neffort: high\n"))
+        render_agents.render_agents(self.repo, "claude", self.out)
+        self.assertIn("effort: high\n", (self.out / "probe.md").read_text())
+
+    def test_rejects_an_unknown_effort(self):
+        (self.repo / "agents" / "probe.md").write_text(NEUTRAL.replace("tier: fast\n", "tier: fast\neffort: huge\n"))
+        with self.assertRaises(ValueError):
+            render_agents.render_agents(self.repo, "claude", self.out)
+
     def test_rejects_an_unknown_access_level(self):
         (self.repo / "agents" / "probe.md").write_text(NEUTRAL.replace("read-only", "root"))
         with self.assertRaises(ValueError):

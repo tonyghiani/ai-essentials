@@ -1,6 +1,7 @@
 ---
 name: deliver
 description: Executes one well-specified task end to end on the current branch: implement, run the repo's verification contract, review with fresh context, fix, and leave a clean committed change. Use for a single task that already has acceptance criteria, when the tech-lead skill hands you a task, or when the user says "deliver this", "implement and verify this task".
+effort: medium
 allowed-tools: Bash(git status *) Bash(ai-verify *) Bash(ai-work *)
 hooks:
   PreToolUse:
@@ -84,7 +85,7 @@ ai-work diff
 - `reviewer` agent: the spec path, the patch path, the repo root. It checks requirements, whether behaviour worth protecting has a test, tests that fail the test-value rule (assertions against copies, mirrors of the implementation, padding), and correctness gaps, and skips style.
 - `convention-checker` agent: the patch path and the absolute paths of the rule files that apply. They are installed in `~/.claude/guidance/` (Claude Code), `~/.codex/guidance/` (Codex) and `~/.cursor/rules/` (Cursor); pick by the changed files' types, for example `typescript-style.mdc` and `project-structure.mdc` for `.ts`. It returns PASS or violations, and a PASS with no rule file read is not a pass: check its report names the files it read.
 
-Without subagents, do both as separate passes reading only those inputs.
+This skill implements at medium effort; the `reviewer` runs at high on its own, which is where extra effort pays. Without subagents, do both as separate passes reading only those inputs, and raise effort for the reviewer pass if the tool allows it.
 
 Fix every `blocks` and `gap` finding and every violation, then re-run step 3. At most two review rounds; if findings remain after the second, report them instead of looping.
 

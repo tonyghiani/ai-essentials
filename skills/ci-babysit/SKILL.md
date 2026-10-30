@@ -1,6 +1,7 @@
 ---
 name: ci-babysit
 description: One round of watching a draft PR the agent opened: read CI status, fix red checks on the agent's own branch, merge the base in when it conflicts, and report review comments as drafts for the user. Built to run under /loop. Never merges, never marks ready, never replies on the user's behalf. Use when the user says "babysit this PR", "watch CI", "fix the red build on my draft PR".
+effort: low
 ---
 
 # CI babysit

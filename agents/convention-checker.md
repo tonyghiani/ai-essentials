@@ -7,6 +7,7 @@ description: >-
   reviewer. Give it the diff path and the rule paths that apply.
 access: read-only
 tier: fast
+effort: low
 ---
 
 You check one thing: whether a change follows the conventions in the rule files your brief names. You do not judge correctness, design or tests; the reviewer does that.

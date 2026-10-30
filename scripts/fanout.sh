@@ -5,12 +5,14 @@
 # Usage:
 #   ai-fanout --tool claude|codex|cursor --list FILE --prompt TEXT [--all]
 #                     [--branch SLUG] [--trial N] [--repo DIR] [--max-turns N] [--budget-usd X] [--timeout-min M]
+#                     [--effort LEVEL]
 #                     [--no-sandbox] [--allow-domain HOST]... [--allow-write PATH]...
 #
 # TEXT may contain {file}. Each run must answer OK or FAIL on its last line. By default only the
 # first 3 files run (a trial): read what went wrong, fix the prompt, then pass --all. The repo must
 # be on a branch the agent created; pass --branch SLUG to create one from the current HEAD.
 #
+# Claude runs at --effort (default high: unattended, so it verifies its own edge cases).
 # Caps per run: --max-turns and --max-budget-usd for Claude; --timeout-min (perl alarm) for Codex and Cursor.
 # Claude runs sandboxed, as in ai-delegate (see scripts/work/sandbox_settings.mjs); --no-sandbox turns it off.
 # Test seam: AI_ESSENTIALS_TOOL_CMD replaces the tool, with $AI_ESSENTIALS_PROMPT and $AI_ESSENTIALS_FILE set.
@@ -27,7 +29,7 @@ done
 HERE="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 WORK_CLI=(node "$HERE/work/cli.mjs")
 
-TOOL="" LIST="" PROMPT="" BRANCH_SLUG="" ALL=false TRIAL=3 REPO="$PWD" MAX_TURNS=20 BUDGET_USD=2 TIMEOUT_MIN=15 TIMEOUT_SEC=""
+TOOL="" LIST="" PROMPT="" BRANCH_SLUG="" ALL=false TRIAL=3 REPO="$PWD" MAX_TURNS=20 BUDGET_USD=2 EFFORT=high TIMEOUT_MIN=15 TIMEOUT_SEC=""
 SANDBOX=true SANDBOX_FLAGS=()
 
 die() { printf 'fanout: %s\n' "$*" >&2; exit 1; }
@@ -43,6 +45,7 @@ while [[ $# -gt 0 ]]; do
     --repo) REPO="$2"; shift 2 ;;
     --max-turns) MAX_TURNS="$2"; shift 2 ;;
     --budget-usd) BUDGET_USD="$2"; shift 2 ;;
+    --effort) EFFORT="$2"; shift 2 ;;
     --timeout-min) TIMEOUT_MIN="$2"; shift 2 ;;
     --timeout-sec) TIMEOUT_SEC="$2"; shift 2 ;;
     --no-sandbox) SANDBOX=false; shift ;;
@@ -92,7 +95,7 @@ Reply with OK or FAIL as the last line. Do not push, do not open a PR."
   if [[ -n "${AI_ESSENTIALS_TOOL_CMD:-}" ]]; then
     AI_ESSENTIALS_PROMPT="$prompt" AI_ESSENTIALS_FILE="$file" perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SEC" bash -c "$AI_ESSENTIALS_TOOL_CMD" >"$out" 2>&1 || status=$?
   elif [[ "$TOOL" == claude ]]; then
-    claude -p "$prompt" --permission-mode auto --max-turns "$MAX_TURNS" --max-budget-usd "$BUDGET_USD" ${CLAUDE_EXTRA[@]+"${CLAUDE_EXTRA[@]}"} </dev/null >"$out" 2>&1 || status=$?
+    claude -p "$prompt" --permission-mode auto --max-turns "$MAX_TURNS" --max-budget-usd "$BUDGET_USD" --effort "$EFFORT" ${CLAUDE_EXTRA[@]+"${CLAUDE_EXTRA[@]}"} </dev/null >"$out" 2>&1 || status=$?
   elif [[ "$TOOL" == codex ]]; then
     perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SEC" codex exec --approve-for-me -C "$REPO" "$prompt" </dev/null >"$out" 2>&1 || status=$?
   elif [[ "$TOOL" == cursor ]]; then

@@ -4,7 +4,9 @@
 # on weekday evenings.
 #
 # Usage:
-#   ai-triage [--max-turns N] [--budget-usd X] [--allow-tool RULE]... [--dry-run]
+#   ai-triage [--max-turns N] [--budget-usd X] [--effort LEVEL] [--allow-tool RULE]... [--dry-run]
+#
+# Effort defaults to low: the run only reads and summarises, so extra verification buys nothing.
 #
 # The report lands in <state>/triage/<YYYY-MM-DD>.md, and <state>/triage/latest.md points at it. On
 # failure the exit status is non-zero, the tool's stderr and its result event stay in
@@ -40,7 +42,7 @@ done
 HERE="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 REPO_HOME="$(cd "$HERE/.." && pwd)"
 
-MAX_TURNS=30 BUDGET_USD=2 DRY_RUN=false EXTRA_ALLOW=()
+MAX_TURNS=30 BUDGET_USD=2 EFFORT=low DRY_RUN=false EXTRA_ALLOW=()
 
 die() { printf 'triage: %s\n' "$*" >&2; exit 1; }
 
@@ -48,6 +50,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --max-turns) MAX_TURNS="$2"; shift 2 ;;
     --budget-usd) BUDGET_USD="$2"; shift 2 ;;
+    --effort) EFFORT="$2"; shift 2 ;;
     --allow-tool) EXTRA_ALLOW+=("$2"); shift 2 ;;
     --dry-run) DRY_RUN=true; shift ;;
     -h|--help) sed -n '2,27p' "$SOURCE"; exit 0 ;;
@@ -105,7 +108,7 @@ DENY=(Write Edit NotebookEdit "Bash(git *)" "Bash(gh api *)" "Bash(gh pr create 
 # differently by the CLI's list parser.
 join_rules() { local IFS=,; printf '%s' "$*"; }
 
-CLAUDE_ARGS=(-p "$PROMPT" --permission-mode dontAsk --setting-sources project --max-turns "$MAX_TURNS" --max-budget-usd "$BUDGET_USD"
+CLAUDE_ARGS=(-p "$PROMPT" --permission-mode dontAsk --setting-sources project --max-turns "$MAX_TURNS" --max-budget-usd "$BUDGET_USD" --effort "$EFFORT"
   --output-format json --settings "$SETTINGS"
   --allowedTools "$(join_rules "${ALLOW[@]}")" --disallowedTools "$(join_rules "${DENY[@]}")")
 

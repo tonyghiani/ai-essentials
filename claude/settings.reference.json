@@ -1,8 +1,8 @@
 {
   "//": "Reference copy of ~/.claude/settings.json. NOT symlinked: Claude Code writes to settings.json when you change theme or model via /config, and a symlink risks clobbering. Diff this against the live file when you want to reconcile.",
   "//model": "Deliberately absent. Managed (organization) settings can pin the model, as opusplan (Opus for planning, claude-sonnet-4-6 for execution) and that wins on restart. A local model key here is dead config that only misleads you about what is running.",
-  "//effortLevel": "high, not xhigh. xhigh globally spent maximum reasoning budget on trivial renames. Bump to xhigh via /config for genuinely hard reasoning. A skill can set `effort` for its own turn (tech-lead and grill-me use high, mechanical skills low), which leaves this session default alone.",
-  "effortLevel": "high",
+  "//effortLevel": "medium for everyday work, as the claude.dev 'spending your effort' post recommends; xhigh globally spent maximum reasoning budget on trivial renames. Verification does not depend on this default: the reviewer, skeptic and judge agents and the review skills pin high, tech-lead and grill-me pin high, mechanical skills pin low. Use /effort mid-session for a hard bug.",
+  "effortLevel": "medium",
   "//autoCompactWindow": "Compact at 400k tokens instead of near the 1M limit: quality drops in long contexts before the window fills. Capped at the model's own window, so it is harmless on smaller models. Applied only when the live file has no value; /autocompact changes it per model.",
   "autoCompactWindow": 400000,
   "permissions": {

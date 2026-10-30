@@ -1,6 +1,7 @@
 ---
 name: open-draft-pr
 description: Pushes the agent's own branch and opens a draft pull request attributed to the user alone, after auditing commits and body for tool credit and confirming checks pass. Never marks a PR ready and never merges. Use at the end of a delivery, or when the user says "open a draft PR", "push this as a draft".
+effort: low
 allowed-tools: Bash(git status *) Bash(git log *) Bash(ai-work *) Bash(ai-verify *)
 ---
 

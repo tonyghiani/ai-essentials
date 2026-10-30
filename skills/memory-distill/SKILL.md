@@ -1,6 +1,7 @@
 ---
 name: memory-distill
 description: Turn logged correction signals into durable memory files. Reads the correction log (written automatically by the log-correction-signal hook in Claude Code, Cursor and Codex whenever Marco corrects the assistant or states a preference), plus the failed-check log, lessons from accepted review comments and overruled decisions, groups recurring themes, and proposes a memory, hook, rule, eval or skill gotcha for each, for approval. Invoke when the user says "distill memory", "update your memory", "what have you learned", or after a stretch of work where preferences came up.
+effort: low
 ---
 
 # Memory distill

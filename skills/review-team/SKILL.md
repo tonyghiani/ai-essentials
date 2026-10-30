@@ -6,6 +6,7 @@ description: >-
   and consolidates what survives into one prioritized report. Use when the user says "review team", "multi-perspective review" or
   "multi-angle review" of branch changes, a module or a plan, and when the
   tech-lead skill meets a large or risky diff.
+effort: high
 ---
 
 # Review Team

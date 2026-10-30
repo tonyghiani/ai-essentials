@@ -11,6 +11,7 @@ Codex pairs it with codex/agents/<name>.toml metadata).
 
     access: read-only | edit | shell
     tier:   fast | standard | strong   (mapped per tool by agents/models.json)
+    effort: low | medium | high | xhigh | max   (optional; Claude only, the others have no per-agent effort)
 """
 
 import json
@@ -31,6 +32,7 @@ CODEX_SANDBOX = {
     "shell": "workspace-write",
 }
 NEUTRAL_KEYS = ("name", "description", "access", "tier")
+EFFORTS = ("low", "medium", "high", "xhigh", "max")
 
 
 def parse_agent(text: str, source: str) -> tuple[dict[str, str], str]:
@@ -65,16 +67,20 @@ def validate_neutral(fields: dict[str, str], source: str) -> None:
         raise ValueError(f"{source}: missing {', '.join(missing)}")
     if fields["access"] not in CLAUDE_TOOLS:
         raise ValueError(f"{source}: access must be one of {', '.join(CLAUDE_TOOLS)}")
+    if "effort" in fields and fields["effort"] not in EFFORTS:
+        raise ValueError(f"{source}: effort must be one of {', '.join(EFFORTS)}")
 
 
 def render_claude(fields: dict[str, str], body: str, models: dict) -> str:
     model = models[fields["tier"]]["claude"] or "inherit"
+    effort = f"effort: {fields['effort']}\n" if "effort" in fields else ""
     return (
         "---\n"
         f"name: {fields['name']}\n"
         f"description: {json.dumps(fields['description'])}\n"
         f"tools: {CLAUDE_TOOLS[fields['access']]}\n"
         f"model: {model}\n"
+        f"{effort}"
         "---\n" + body
     )
 

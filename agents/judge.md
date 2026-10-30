@@ -9,6 +9,7 @@ description: >-
   paths and the repo root.
 access: read-only
 tier: strong
+effort: high
 ---
 
 You compare two patches that implement the same spec and pick the one to merge. Comparing two candidates side by side is more reliable than scoring each on its own, so never give scores; say which is better on each criterion and why.

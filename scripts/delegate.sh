@@ -4,7 +4,7 @@
 #
 # Usage:
 #   ai-delegate --tool claude|codex|cursor [--repo DIR] [--slug NAME] [--base REF]
-#                       [--max-turns N] [--budget-usd X] [--timeout-min M]
+#                       [--max-turns N] [--budget-usd X] [--timeout-min M] [--effort LEVEL]
 #                       [--no-sandbox] [--allow-domain HOST]... [--allow-write PATH]...
 #                       <ticket text | @file>
 #   ai-delegate --tool ... --spec SPEC.md --task ID --base PARENT-BRANCH [notes]
@@ -22,6 +22,9 @@
 #                merges the branch into its own and opens the one PR.
 #
 # Commits are checked by a commit-msg hook scoped to the run (see below), in any tool.
+#
+# Effort: Claude Code runs at --effort (default high: nobody is in the loop to catch a missed edge case;
+# pass max for a hard, fully autonomous build). Codex and Cursor have no such flag.
 #
 # Caps: Claude Code gets --max-turns and --max-budget-usd. Codex and Cursor (binary: agent) have
 # neither flag, so the wrapper enforces --timeout-min with perl's alarm (macOS has no `timeout`).
@@ -58,7 +61,7 @@ WORK_CLI=(node "$REPO_HOME/scripts/work/cli.mjs")
 VERIFY_CLI=(node "$REPO_HOME/scripts/verify/cli.mjs")
 AUDIT=(node "$REPO_HOME/scripts/guard/audit_branch.mjs")
 
-TOOL="" REPO="$PWD" SLUG="" BASE="" MAX_TURNS=40 BUDGET_USD=10 TIMEOUT_MIN=45 TIMEOUT_SEC="" REMOVE=false TICKET=""
+TOOL="" REPO="$PWD" SLUG="" BASE="" MAX_TURNS=40 BUDGET_USD=10 EFFORT=high TIMEOUT_MIN=45 TIMEOUT_SEC="" REMOVE=false TICKET=""
 SPEC="" TASK="" SANDBOX=true SANDBOX_FLAGS=()
 
 die() { printf 'delegate: %s\n' "$*" >&2; exit 1; }
@@ -71,6 +74,7 @@ while [[ $# -gt 0 ]]; do
     --base) BASE="$2"; shift 2 ;;
     --max-turns) MAX_TURNS="$2"; shift 2 ;;
     --budget-usd) BUDGET_USD="$2"; shift 2 ;;
+    --effort) EFFORT="$2"; shift 2 ;;
     --timeout-min) TIMEOUT_MIN="$2"; shift 2 ;;
     --timeout-sec) TIMEOUT_SEC="$2"; shift 2 ;;
     --spec) SPEC="$2"; shift 2 ;;
@@ -223,7 +227,7 @@ if [[ -n "${AI_ESSENTIALS_TOOL_CMD:-}" ]]; then
   AI_ESSENTIALS_PROMPT="$PROMPT" perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SEC" bash -c "$AI_ESSENTIALS_TOOL_CMD" >&2 || EXIT=$?
 elif [[ "$TOOL" == claude ]]; then
   # stream-json keeps every step, so a failed run can be read as a trace and not only as a result.
-  CLAUDE_ARGS=(-p "$PROMPT" --permission-mode auto --max-turns "$MAX_TURNS" --max-budget-usd "$BUDGET_USD" --output-format stream-json --verbose --settings "$RUN_SETTINGS")
+  CLAUDE_ARGS=(-p "$PROMPT" --permission-mode auto --max-turns "$MAX_TURNS" --max-budget-usd "$BUDGET_USD" --effort "$EFFORT" --output-format stream-json --verbose --settings "$RUN_SETTINGS")
   claude "${CLAUDE_ARGS[@]}" </dev/null > "$SPEC_DIR/run.jsonl" 2> "$SPEC_DIR/run.err" || EXIT=$?
 elif [[ "$TOOL" == codex ]]; then
   perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SEC" \
