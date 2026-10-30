@@ -67,7 +67,7 @@ describe('install on a clean home', () => {
     spawnSync('git', ['init', '-q', '-b', 'main', repo]);
     assert.match(run('ai-verify', ['--where'], repo).stdout, /"repoKey"/);
     assert.equal(run('ai-pr-body', ['--check', join(home, 'missing.md')], repo).status, 1);
-    assert.match(run('ai-audit', [], repo).stderr + run('ai-audit', [], repo).stdout, /not configured|clean|problem|author/i);
+    assert.match(run('ai-audit', [], repo).stderr + run('ai-audit', [], repo).stdout, /not configured|clean|problem|author|audited/i);
   });
 
   it('exposes the repo at the stable path the skills use', () => {

@@ -43,7 +43,7 @@ Skills and agents never refer to this repository. They call these commands by na
 | `ai-work` | Creates the agent's branch, finds the spec directory, writes the diff, prints logs (`ai-work logs corrections\|failures\|errors`) |
 | `ai-verify` | Runs, locates (`--where`) or trusts (`--trust`) a repo's verification contract |
 | `ai-decisions` | Lists, matches and records your decision precedents; `classes` prints the always-ask classes |
-| `ai-pr-body` | Builds the PR body, with the "Decisions made without you" section |
+| `ai-pr-body` | Validates the PR body against `pr-description-template` |
 | `ai-audit` | Audits a branch's commits and a PR body for tool credit and identity |
 | `ai-delegate`, `ai-fanout` | Parallel and batch runs (section 5) |
 
@@ -159,11 +159,10 @@ Without a ticket, the PR body says what the change does and why, and links nothi
    edge-case tests, correctness gaps; not style). A read-only `convention-checker` agent checks your
    style rules. Specialists run when the diff calls for them: `dep-size`, `a11y-audit`, `i18n-sweep`,
    `react-perf`, `api-contract-review`. At most two review rounds.
-7. **Hand-off.** It writes the description (`pr-description-template`). A script then builds the PR body: your description plus a
-   **"Decisions made without you"** section from what the run recorded, or an explicit "None". The guard refuses to open a PR from the
-   agent's branch without that section, so it cannot be skipped. It then audits commits and body for tool credit, pushes the branch,
+7. **Hand-off.** It writes the description (`pr-description-template`). A script then checks the PR body against the template (title line, `## 📓 Summary`, `## 🧪 Testing`). The guard refuses to open
+   a PR from the agent's branch without those headings, so it cannot be skipped. It then audits commits and body for tool credit, pushes the branch,
    opens a **draft** PR, and reports: what changed, the commands it ran and
-   their output, decisions it made without you, follow-ups it noticed but did not do or file.
+   their output, follow-ups it noticed but did not do or file.
 
 ### Which tests it writes, and which it will not
 
@@ -183,7 +182,7 @@ any added test that breaks these rules, so a padded suite comes back as a findin
 
 ### What you do at the end
 
-- Read the report. The "Decisions made without you" section in the PR body is the audit trail.
+- Read the report and the diff.
 - Open the draft. Review it like any other PR. Mark it ready yourself when you are happy.
 - If it overstepped, say so in plain words (`no, don't do that`). That is logged and feeds section 10.
 
@@ -240,7 +239,7 @@ Read the summary first:
 | `"questions": true` | It hit an always-ask decision and stopped | Read `<specDir>/questions.md`, answer, rerun with the answer in the task |
 | `"audit": { "ok": false }` | A commit or body credited a tool or used another identity | Look at `audit.output`; do not push |
 | `"verify": { "ok": false }` | The contract fails on the final state | `cd` into the worktree and look |
-| `"commits": 0` and no questions | It did not finish | Read `<specDir>/run.json` (Claude) or `run.txt` (Codex, Cursor) and `run.err` |
+| `"commits": 0` and no questions | It did not finish | Read `<specDir>/run.jsonl` (Claude: every step, ending in a `result` event with cost and turns) or `run.txt` (Codex, Cursor) and `run.err` |
 
 **Headless runs can open a draft PR on their own.** The prompt tells the agent to run `open-draft-pr` when the contract passes and the
 audit is clean. If you want the run to stop before pushing, say so in the task: "Do not push and do not open a PR."
@@ -393,7 +392,7 @@ see one only when the agent cannot.
 | `--author`, `GIT_AUTHOR_*`, `git config user.*`, `GH_TOKEN`, `gh auth ...` | Your identity only | Nothing; commits use your configured identity |
 | A branch named `claude/...`, `codex/...`, `cursor/...` | Branch names carry no tool name | Use `<login>/<slug>` |
 | `gh pr create` without `--draft` | Drafts only | Add `--draft` |
-| `gh pr create` from the agent's branch without a "Decisions made without you" section | You audit what it decided | Build the body with `ai-pr-body`; `open-draft-pr` does |
+| A PR from the agent's branch with a body that skips the PR template | Every PR reads the same | Write the body with `pr-description-template` and validate it with `ai-pr-body`; `open-draft-pr` does |
 | `gh pr ready`, `gh pr merge` | Your decision | You do it |
 | `git push --force`, `-f`, or a push to main or master | Never | Push the branch normally |
 | `rm -r` of anything outside the repo, the repo root, or a path it cannot resolve | Blast radius | Use a literal path inside the repo |
@@ -461,7 +460,7 @@ Log files, all in `~/.ai-essentials/state/`:
 | `hook-errors.jsonl` | Hook crashes (hooks never block on their own errors) |
 | `corrections.jsonl` | Your corrections, for `memory-distill` |
 | `branches.json` | Branches the agent created, per repo |
-| `specs/<repo>/<branch>/` | `SPEC.md`, `decisions-made.md`, `questions.md`, `diff.patch`, `pr-body.md`, run logs |
+| `specs/<repo>/<branch>/` | `SPEC.md`, `questions.md`, `diff.patch`, `pr-body.md`, run logs |
 | `evals/` | Results of real eval runs |
 
 ## 13. Differences between the tools
@@ -472,6 +471,7 @@ Log files, all in `~/.ai-essentials/state/`:
 | Hooks active | Yes | Only after `/hooks` trust | Configured; untested in the app |
 | Delegated run caps | turns, budget, timeout | timeout | timeout |
 | Unattended approvals | auto mode | `--approve-for-me` (a managed org policy may forbid `never`) | `--force` with the sandbox on |
+| OS sandbox in `ai-delegate` / `ai-fanout` | per-run `--settings` file: writes to the worktree, git dir and state dir only, GitHub and npm hosts only (`--allow-domain`, `--allow-write`, `--no-sandbox`) | workspace-write sandbox implied by `--approve-for-me` | `--sandbox enabled` |
 | Read-only agents | `tools:` restriction | read-only sandbox | `readonly: true` |
 | Attribution switches | `attribution` blank | none needed (guard and audit cover it) | config keys plus app toggles |
 

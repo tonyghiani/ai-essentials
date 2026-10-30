@@ -63,7 +63,7 @@
     "pr": ""
   },
   "includeCoAuthoredBy": false,
-  "//hooks": "UserPromptSubmit logs corrections for memory-distill. PreToolUse(Bash) is the no-credit and draft-only guard. PostToolUse formats edited files from the repo's verification contract. Stop runs the contract and blocks the turn on failure. All three read the contract through scripts/verify; none writes into a target repo.",
+  "//hooks": "UserPromptSubmit logs corrections for memory-distill. PreToolUse(Bash) is the no-credit and draft-only guard. PostToolUse formats edited files from the repo's verification contract. Stop runs the contract and blocks the turn on failure. All three read the contract through scripts/verify; none writes into a target repo. The Stop timeout (1200s) sits above the verifier's own 1080s budget: a hook Claude Code kills at its timeout ends the turn unverified and logs nothing.",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -102,7 +102,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME\"/.claude/hooks/verify-on-stop.mjs"
+            "command": "node \"$HOME\"/.claude/hooks/verify-on-stop.mjs",
+            "timeout": 1200
           }
         ]
       }

@@ -1,6 +1,6 @@
 ---
 name: pr-description-template
-description: Creates pull request descriptions using a fixed template with a concise title, a mixed paragraph-and-bullets summary section, and testing bullets, and can create the PR with gh. Use when the user asks to write a PR description, PR body, pull request summary, or to create a PR.
+description: Writes pull request description text from a fixed template with a concise title, a mixed paragraph-and-bullets summary section, and testing bullets. Returns text only; opening the PR is open-draft-pr's job. Use when the user asks to write a PR description, PR body or pull request summary.
 ---
 # PR Description Template
 
@@ -70,7 +70,7 @@ Webhook deliveries to our payment provider occasionally fail on transient networ
 
 ## Decisions section
 
-When this skill is used by `tech-lead` or `open-draft-pr`, do not write a "Decisions made without you" section. `ai-pr-body` appends it from the run's record, so it cannot be forgotten or paraphrased. Used on its own, this skill produces the template above and nothing else.
+Whoever calls this skill (including `tech-lead` and `open-draft-pr`), the output is the template above and nothing else: the `> title` line, `## 📓 Summary` and `## 🧪 Testing`, with the icons. Add no other section. `ai-pr-body` rejects a body that drifted.
 
 ## Attribution
 

@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Write the failing test first, then the implementation, in Marco's testing style. Invoke when the user says "tdd", "test first", "write the test first", or when adding behaviour to code that already has tests worth extending. Opt-in; do not apply automatically.
+description: Writes the failing test first, then the implementation, in Marco's testing style. Use when the user says "tdd", "test first" or "write the test first", and when the deliver skill adds a test worth its CI cost.
 ---
 
 # TDD loop

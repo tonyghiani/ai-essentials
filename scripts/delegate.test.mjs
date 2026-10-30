@@ -138,6 +138,31 @@ describe('delegate.sh', () => {
     assert.match(prompt, /Do the thing/);
   });
 
+  it('runs one task of an existing spec with deliver, and tells the tool not to push or open a PR', () => {
+    writeFileSync(join(ctx.base, 'SPEC.md'), '# Spec\n\n## Tasks\n\n- T2: add the thing\n');
+    const result = run(DELEGATE, ['--repo', ctx.repo, '--spec', join(ctx.base, 'SPEC.md'), '--task', 'T2', '--base', 'main'], {
+      AI_ESSENTIALS_TOOL_CMD: 'printf "%s" "$AI_ESSENTIALS_PROMPT" > prompt.txt',
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const summary = JSON.parse(result.stdout);
+    assert.equal(summary.branch, 'octocat/task-t2');
+    assert.equal(summary.task, 'T2');
+    const prompt = readFileSync(join(summary.worktree, 'prompt.txt'), 'utf8');
+    assert.match(prompt, /deliver skill on task T2 of the spec at .*SPEC\.md/);
+    assert.match(prompt, /Do not push and do not open a pull request/);
+    assert.doesNotMatch(prompt, /open-draft-pr/);
+  });
+
+  it('audits the agent commits when started from a detached HEAD', () => {
+    git(ctx.repo, ['checkout', '-q', '--detach']);
+    const result = run(DELEGATE, ['--repo', ctx.repo, '--slug', 'detached', 'Task'], {
+      AI_ESSENTIALS_TOOL_CMD: 'echo x > x.txt && git add x.txt && GIT_AUTHOR_NAME=Someone git commit -q --no-verify -m "Add x"',
+    });
+    const summary = JSON.parse(result.stdout);
+    assert.equal(summary.commits, 1);
+    assert.equal(summary.audit.ok, false);
+  });
+
   it('copies the files the contract lists into the new worktree', () => {
     writeFileSync(join(ctx.repo, '.env'), 'TOKEN=1\n');
     mkdirSync(ctx.env.AI_ESSENTIALS_CONTRACTS, { recursive: true });
@@ -263,6 +288,27 @@ describe('tool invocation', () => {
     assert.deepEqual(args.slice(args.indexOf('--permission-mode'), args.indexOf('--permission-mode') + 2), ['--permission-mode', 'auto']);
     assert.deepEqual(args.slice(args.indexOf('--max-turns'), args.indexOf('--max-turns') + 2), ['--max-turns', '7']);
     assert.deepEqual(args.slice(args.indexOf('--max-budget-usd'), args.indexOf('--max-budget-usd') + 2), ['--max-budget-usd', '2']);
+  });
+
+  it('starts Claude Code inside a sandbox that can still commit in the worktree', () => {
+    const fake = fakeClis(['claude']);
+    const result = run(DELEGATE, ['--repo', ctx.repo, '--tool', 'claude', '--slug', 'sb', 'Task'], fake.env);
+    assert.equal(result.status, 0, result.stderr);
+    const args = fake.argsOf('claude');
+    const settings = JSON.parse(readFileSync(args[args.indexOf('--settings') + 1], 'utf8'));
+    assert.equal(settings.sandbox.enabled, true);
+    assert.equal(settings.sandbox.failIfUnavailable, true);
+    assert.equal(settings.sandbox.filesystem.allowWrite.includes(realpathSync(join(ctx.repo, '.git'))), true);
+  });
+
+  it('reports the cost and turns Claude Code ends its stream with', () => {
+    const bin = join(ctx.base, 'bin-cost');
+    mkdirSync(bin, { recursive: true });
+    writeFileSync(join(bin, 'claude'), `#!/usr/bin/env bash\necho '{"type":"system"}'\necho '{"type":"result","total_cost_usd":0.42,"num_turns":7}'\n`, { mode: 0o755 });
+    const result = run(DELEGATE, ['--repo', ctx.repo, '--tool', 'claude', '--slug', 'cost', 'Task'], { PATH: `${bin}:${process.env.PATH}` });
+    const summary = JSON.parse(result.stdout);
+    assert.equal(summary.costUsd, 0.42);
+    assert.equal(summary.turns, 7);
   });
 
   it('starts Codex with automatic approval review in the worktree and no separate sandbox flag', () => {

@@ -14,22 +14,39 @@
  * @typedef {{ allow: true } | { allow: false, rule: string, reason: string }} IVerdict
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { isAbsolute, join } from 'node:path';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { isAbsolute, join, resolve } from 'node:path';
 import { repoHome } from '../lib/paths.mjs';
 import { defaultBase, git, repoRoot } from '../lib/repo.mjs';
+import { expandShortFlags, programOf, shellWords, splitSegments } from '../lib/shell.mjs';
 import { currentBranch, isAgentBranch } from '../work/branches.mjs';
-import { DECISIONS_HEADING } from '../work/pr_body.mjs';
+import { TEMPLATE_HEADINGS } from '../work/pr_body.mjs';
 import { findAttribution, findBranchPrefix } from './attribution.mjs';
 import { checkRecursiveDelete } from './rm.mjs';
 
 const MESSAGE_FILE_FLAG = /(?:^|\s)(?:-F|--file|--body-file)(?:=|\s+)(?:"([^"]+)"|'([^']+)'|(\S+))/g;
-const COMMAND_SEPARATORS = /&&|\|\||;|\||\n/;
+/** A message file bigger than this is not a commit message; skip it rather than hang on it. */
+const MAX_MESSAGE_FILE_BYTES = 1_000_000;
+/** `bash -c "bash -c '...'"` deeper than this is refused rather than unwrapped. */
+const MAX_NESTING = 3;
+/** git rewrites `--trailer Key=Value` to `Key: Value`, so the check must read it that way too. */
+const TRAILER_WITH_EQUALS = /(--trailer[=\s]+["']?[A-Za-z-]+)=/g;
+/** Words a guard crash must not wave through. */
+const GUARDED_PROGRAMS = /\b(git|gh|rm)\b/;
+
+/** git's global options that take their value as the next word. */
+const GIT_OPTIONS_WITH_VALUE = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--super-prefix', '--config-env']);
+/** `git push` options that take their value as the next word, so it is not read as a remote or refspec. */
+const PUSH_OPTIONS_WITH_VALUE = new Set(['-o', '--push-option', '--repo', '--receive-pack', '--exec']);
+const IDENTITY_KEY = /^(user|author|committer)\.(name|email)$/i;
+const ALIAS_KEY = /^alias\./i;
+const GH_PR_CREATE = new Set(['create', 'new']);
+const GH_API_MERGE_OR_READY = /mergePullRequest|enablePullRequestAutoMerge|markPullRequestReadyForReview|pulls\/[^\s/]+\/merge\b/i;
 
 /** Commands whose arguments become public text. */
 const PUBLISHING_PATTERNS = [
   /\bgit\b[^|;&\n]*\b(commit|tag|merge|notes)\b/,
-  /\bgh\s+(pr|issue)\s+(create|edit|comment|review)\b/,
+  /\bgh\s+(pr|issue)\s+(create|new|edit|comment|review)\b/,
   /\bgh\s+api\b/,
 ];
 
@@ -68,36 +85,48 @@ function withReferencedFiles(command, cwd) {
       return [];
     }
     const path = isAbsolute(reference) ? reference : join(cwd, reference);
-    return existsSync(path) ? [readFileSync(path, 'utf8')] : [];
+    // A directory or device here is some other command's --file flag (grep, curl); reading it would
+    // throw or block, and a guard that crashes lets the command through.
+    if (!existsSync(path)) {
+      return [];
+    }
+    const stats = statSync(path);
+    return stats.isFile() && stats.size <= MAX_MESSAGE_FILE_BYTES ? [readFileSync(path, 'utf8')] : [];
   });
-  return [command, ...contents].join('\n');
+  return [command, ...contents].join('\n').replace(TRAILER_WITH_EQUALS, '$1: ');
 }
 
 /**
- * Strip leading `VAR=value` assignments and git's global `-C dir` / `-c k=v`
- * so the subcommand is the first remaining word.
+ * Split `git [global options] <subcommand> [args]`. Every global option is
+ * skipped, not just `-C` and `-c`, so `git --no-pager push` is still a push.
  *
- * @param {string} segment
- * @returns {string[]} Tokens starting at the program name.
+ * @param {string[]} args Words after `git`.
+ * @param {string} cwd
+ * @returns {{ subcommand: string, args: string[], dir: string, config: string[] }}
+ *   `dir` applies any `-C`; `config` holds every `-c` and `--config-env` entry.
  */
-function tokensOf(segment) {
-  const tokens = segment.trim().split(/\s+/).filter(Boolean);
-  while (tokens.length > 0 && /^\w+=/.test(tokens[0])) {
-    tokens.shift();
-  }
-  if (tokens[0] === 'git') {
-    const rest = tokens.slice(1);
-    const cleaned = [];
-    for (let index = 0; index < rest.length; index += 1) {
-      if (rest[index] === '-C' || rest[index] === '-c') {
-        index += 1;
-      } else {
-        cleaned.push(rest[index]);
+function parseGit(args, cwd) {
+  let dir = cwd;
+  const config = [];
+  let index = 0;
+  while (index < args.length && args[index].startsWith('-')) {
+    const option = args[index];
+    if (GIT_OPTIONS_WITH_VALUE.has(option)) {
+      const value = args[index + 1] ?? '';
+      if (option === '-C') {
+        dir = resolve(dir, value);
+      } else if (option === '-c' || option === '--config-env') {
+        config.push(value);
       }
+      index += 2;
+    } else {
+      if (option.startsWith('--config-env=')) {
+        config.push(option.slice('--config-env='.length));
+      }
+      index += 1;
     }
-    return ['git', ...cleaned];
   }
-  return tokens;
+  return { subcommand: args[index] ?? '', args: args.slice(index + 1), dir, config };
 }
 
 /**
@@ -111,29 +140,43 @@ function protectedBranches(cwd) {
 }
 
 /**
- * @param {string[]} tokens `git push ...` tokens.
- * @param {string} cwd
+ * @param {string[]} rawArgs Words after `git push`.
+ * @param {string} dir Directory the push runs in, after any `-C`.
  * @returns {IVerdict}
  */
-function checkPush(tokens, cwd) {
-  const args = tokens.slice(2);
-  const flags = args.filter((token) => token.startsWith('-'));
-  if (flags.some((flag) => ['--force', '-f', '--force-with-lease', '--mirror'].includes(flag) || flag.startsWith('--force-with-lease='))) {
+function checkPush(rawArgs, dir) {
+  const args = expandShortFlags(rawArgs);
+  const flags = [];
+  const positional = [];
+  for (let index = 0; index < args.length; index += 1) {
+    if (PUSH_OPTIONS_WITH_VALUE.has(args[index])) {
+      index += 1;
+    } else if (args[index].startsWith('-')) {
+      flags.push(args[index]);
+    } else {
+      positional.push(args[index]);
+    }
+  }
+  if (flags.some((flag) => ['--force', '-f', '--mirror'].includes(flag) || flag.startsWith('--force-with-lease'))) {
     return deny('no-force-push', 'Force pushes are blocked. Push normally; if history must change, stop and ask the user.');
   }
-  const positional = args.filter((token) => !token.startsWith('-'));
+  if (flags.includes('--all') || flags.includes('--branches')) {
+    return deny('no-default-branch-push', 'Pushing every branch includes the default one. Push your branch by name.');
+  }
   const refspecs = positional.slice(1);
-  const protectedNames = protectedBranches(cwd);
-
   if (refspecs.some((refspec) => refspec.startsWith('+'))) {
     return deny('no-force-push', 'A "+" refspec forces the push. Remove it.');
   }
-  const targets =
-    refspecs.length > 0
-      ? refspecs.map((refspec) => (refspec.includes(':') ? refspec.split(':')[1] : refspec))
-      : [git(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']) ?? ''];
+  if (refspecs.some((refspec) => refspec === ':' || refspec.includes('*'))) {
+    return deny('no-default-branch-push', 'A matching or wildcard refspec can update the default branch. Push your branch by name.');
+  }
+
+  const current = git(dir, ['rev-parse', '--abbrev-ref', 'HEAD']) ?? '';
+  const protectedNames = protectedBranches(dir);
+  const targets = refspecs.length > 0 ? refspecs.map((refspec) => refspec.slice(refspec.indexOf(':') + 1)) : [current];
   const hit = targets
     .map((target) => target.replace(/^refs\/heads\//, ''))
+    .map((target) => (target === 'HEAD' || target === '@' ? current : target))
     .find((target) => protectedNames.has(target));
   if (hit !== undefined) {
     return deny('no-default-branch-push', `Pushing to "${hit}" is blocked. Work on a branch and open a draft PR.`);
@@ -142,16 +185,64 @@ function checkPush(tokens, cwd) {
 }
 
 /**
- * @param {string[]} tokens
- * @param {string} segment
+ * Identity overrides and aliases passed to one git invocation. An alias is
+ * refused because it can hide a force push or a merge behind a name this guard
+ * does not know.
+ *
+ * @param {{ subcommand: string, args: string[], config: string[] }} parsed
  * @returns {IVerdict}
  */
-function checkGh(tokens, segment) {
-  const [, area, action] = tokens;
-  if (area === 'pr' && action === 'create' && !/(?:^|\s)(--draft|-d)(?:\s|=|$)/.test(segment)) {
+function checkGitSettings({ subcommand, args, config }) {
+  const keys = config.map((entry) => entry.split('=')[0]);
+  if (subcommand === 'config') {
+    const [first, ...rest] = args;
+    // Both `git config <key> <value>` and the newer `git config set <key> <value>`.
+    const words = first === 'set' ? rest : args;
+    const reading = ['get', 'list', 'unset'].includes(first ?? '') || args.some((arg) => /^(--(get|get-all|get-regexp|list|unset|unset-all)|-l)$/.test(arg));
+    const positional = words.filter((word) => !word.startsWith('-'));
+    if (!reading && positional.length >= 2) {
+      keys.push(positional[0]);
+    }
+  }
+  if (keys.some((key) => IDENTITY_KEY.test(key))) {
+    return deny('own-identity', 'Do not change user.name or user.email, or set a different commit author. Commits use the identity already configured in this repo.');
+  }
+  if (keys.some((key) => ALIAS_KEY.test(key))) {
+    return deny('no-alias', 'Do not define git aliases. Run the full git command, so the guard can read it.');
+  }
+  if (subcommand === 'commit' && args.some((arg) => arg === '--author' || arg.startsWith('--author='))) {
+    return deny('own-identity', 'Do not set a different commit author. Commits use the identity already configured in this repo.');
+  }
+  return { allow: true };
+}
+
+/**
+ * @param {string[]} args Words after `git`.
+ * @param {string} cwd
+ * @returns {IVerdict}
+ */
+function checkGit(args, cwd) {
+  const parsed = parseGit(args, cwd);
+  const settings = checkGitSettings(parsed);
+  if (!settings.allow) {
+    return settings;
+  }
+  return parsed.subcommand === 'push' ? checkPush(parsed.args, parsed.dir) : { allow: true };
+}
+
+/**
+ * @param {string[]} args Words after `gh`.
+ * @returns {IVerdict}
+ */
+function checkGh(args) {
+  const [area, action] = args;
+  if (area === 'pr' && GH_PR_CREATE.has(action ?? '') && !args.some((arg) => arg === '--draft' || arg === '-d' || arg === '--draft=true')) {
     return deny('draft-only', 'Pull requests must be opened as drafts. Re-run with --draft.');
   }
-  if (area === 'pr' && action === 'ready' && !tokens.includes('--undo')) {
+  if (area === 'alias' && ['set', 'import'].includes(action ?? '')) {
+    return deny('no-alias', 'Do not define gh aliases. Run the full gh command, so the guard can read it.');
+  }
+  if (area === 'pr' && action === 'ready' && !args.includes('--undo')) {
     return deny('draft-only', 'Marking a pull request ready for review is the user\'s decision. Leave it as a draft.');
   }
   if (area === 'pr' && action === 'merge') {
@@ -160,16 +251,16 @@ function checkGh(tokens, segment) {
   if (area === 'auth' && ['login', 'logout', 'switch', 'token', 'refresh', 'setup-git'].includes(action ?? '')) {
     return deny('own-identity', 'Do not change GitHub credentials. All remote actions use the user\'s existing login.');
   }
-  if (area === 'api' && /markPullRequestReadyForReview|pulls\/\d+\/merge/.test(segment)) {
+  if (area === 'api' && GH_API_MERGE_OR_READY.test(args.join(' '))) {
     return deny('draft-only', 'Marking a pull request ready or merging it through the API is blocked.');
   }
   return { allow: true };
 }
 
 /**
- * A PR opened from a branch the agent created must carry the "Decisions made
- * without you" section, so the user can audit what was decided for them. The
- * section is added by scripts/work/pr_body.mjs; this refuses a body that skipped it.
+ * A PR opened from a branch the agent created must follow the
+ * pr-description-template headings (icons included). scripts/work/pr_body.mjs
+ * validates the whole template; this refuses a body that skipped it.
  *
  * @param {string} command
  * @param {string} cwd
@@ -181,12 +272,14 @@ function checkPrBody(command, cwd) {
   if (root === null || branch === null || !isAgentBranch(root, branch)) {
     return { allow: true };
   }
-  if (withReferencedFiles(command, cwd).includes(DECISIONS_HEADING)) {
+  const body = withReferencedFiles(command, cwd);
+  const missing = TEMPLATE_HEADINGS.filter((heading) => !body.includes(heading));
+  if (missing.length === 0) {
     return { allow: true };
   }
   return deny(
-    'pr-needs-decisions-section',
-    `This PR comes from a branch the agent created, so its body must include "${DECISIONS_HEADING}". Build it with: ai-pr-body, then pass the result with --body-file.`,
+    'pr-needs-template',
+    `This PR comes from a branch the agent created, so its body must follow the pr-description-template (missing ${missing.join(', ')}). Write it with that skill, validate it with: ai-pr-body, then pass the result with --body-file.`,
   );
 }
 
@@ -201,11 +294,12 @@ function checkIdentity(command) {
   if (/\bGIT_(AUTHOR|COMMITTER)_(NAME|EMAIL)=/.test(command)) {
     return deny('own-identity', 'Do not override the git author or committer. Commits use the identity already configured in this repo.');
   }
-  if (/\bgit\b[^|;&\n]*--author(=|\s)/.test(command) || /\bgit\b[^|;&\n]*-c\s+(user|author|committer)\.(name|email)=/.test(command)) {
+  // GIT_CONFIG_COUNT/KEY/VALUE is the environment form of `git -c`.
+  if (/\bGIT_CONFIG_KEY_\d+=["']?(user|author|committer)\.(name|email)\b/i.test(command)) {
     return deny('own-identity', 'Do not set a different commit author. Commits use the identity already configured in this repo.');
   }
-  if (/\bgit\s+config\b(?![^|;&\n]*--(get|list|unset))[^|;&\n]*\buser\.(name|email)\s+(?!-)\S/.test(command)) {
-    return deny('own-identity', 'Do not change user.name or user.email. They are the user\'s identity.');
+  if (/\bGIT_CONFIG_KEY_\d+=["']?alias\./i.test(command)) {
+    return deny('no-alias', 'Do not define git aliases. Run the full git command, so the guard can read it.');
   }
   if (/\b(GH|GITHUB)_(ENTERPRISE_)?TOKEN=/.test(command) && /\b(gh|git)\b/.test(command)) {
     return deny('own-identity', 'Do not supply a different GitHub token. Remote actions use the user\'s own login.');
@@ -222,7 +316,10 @@ function checkBranchNames(command) {
   if (!creating) {
     return { allow: true };
   }
-  const words = command.split(/\s+/).map((word) => word.replace(/^["']|["']$/g, '').replace(/^origin\//, ''));
+  // Split refspecs too: `git push origin HEAD:claude/fix` creates the remote branch after the colon.
+  const words = command
+    .split(/[\s:]+/)
+    .map((word) => word.replace(/^["'+]+|["']+$/g, '').replace(/^(refs\/heads\/)?(origin\/)?/, ''));
   const offender = words.find((word) => findBranchPrefix(word) !== null);
   return offender === undefined
     ? { allow: true }
@@ -234,6 +331,38 @@ function checkBranchNames(command) {
  * @returns {IVerdict}
  */
 export function checkCommand({ command, cwd = process.cwd() }) {
+  return checkLine(command, cwd, 0);
+}
+
+/**
+ * checkCommand for the hook adapters. A crash in the policy code must not
+ * become an allow for the commands the policy exists for, because Claude Code
+ * and Codex treat a hook's non-2 exit as "go ahead".
+ *
+ * @param {{ command: string, cwd?: string }} input
+ * @returns {IVerdict & { error?: unknown }} `error` is set when the check threw.
+ */
+export function checkCommandFailClosed(input) {
+  try {
+    return checkCommand(input);
+  } catch (error) {
+    if (GUARDED_PROGRAMS.test(input.command)) {
+      return {
+        ...deny('guard-error', 'The agent guard could not check this command, so it is blocked. Simplify it (one git or gh command per call, no wrappers) and retry.'),
+        error,
+      };
+    }
+    return { allow: true, error };
+  }
+}
+
+/**
+ * @param {string} command
+ * @param {string} cwd
+ * @param {number} depth How many `bash -c` or `eval` layers this line sits inside.
+ * @returns {IVerdict}
+ */
+function checkLine(command, cwd, depth) {
   const forbidden = loadForbiddenPatterns().find(({ regex }) => new RegExp(regex).test(command));
   if (forbidden !== undefined) {
     return deny(forbidden.id, forbidden.reason);
@@ -256,20 +385,25 @@ export function checkCommand({ command, cwd = process.cwd() }) {
     return branch;
   }
 
-  for (const segment of command.split(COMMAND_SEPARATORS)) {
-    const tokens = tokensOf(segment);
+  for (const segment of splitSegments(command)) {
+    const { program, args, inner } = programOf(shellWords(segment));
+    if (inner !== null && depth >= MAX_NESTING) {
+      return deny('guard-error', 'Commands nested this deep in bash -c or eval cannot be checked. Run the git or gh command directly.');
+    }
     const verdict =
-      tokens[0] === 'git' && tokens[1] === 'push'
-        ? checkPush(tokens, cwd)
-        : tokens[0] === 'gh'
-          ? checkGh(tokens, segment)
-          : { allow: true };
+      inner !== null
+        ? checkLine(inner, cwd, depth + 1)
+        : program === 'git'
+          ? checkGit(args, cwd)
+          : program === 'gh'
+            ? checkGh(args)
+            : { allow: true };
     if (!verdict.allow) {
       return verdict;
     }
   }
 
-  if (/\bgh\s+pr\s+create\b/.test(command)) {
+  if (/\bgh\s+pr\s+(create|new)\b/.test(command)) {
     const body = checkPrBody(command, cwd);
     if (!body.allow) {
       return body;

@@ -73,6 +73,10 @@ describe('checkCommand allows ordinary work', () => {
     'rm -rf packages/app/dist',
     'rm -f notes.txt',
     'curl -sS https://example.com/data.json -o data.json',
+    'gh pr create --title "Fix (retry) for R&D | notes" --body "a; b" --draft',
+    'git log --author=marco',
+    'git commit -m "Add x" && grep -r --file . pattern',
+    'git config --get user.name && git push origin marco/feature 2>&1',
   ];
   for (const command of ALLOWED) {
     it(`allows: ${command}`, () => {
@@ -119,6 +123,32 @@ describe('checkCommand blocks', () => {
     ['git commit -m "Fix it" -m "Made-with: Cursor"', 'no-tool-credit'],
     ['gh pr create --draft --title "x" --body "🤖 Generated with Codex"', 'no-tool-credit'],
     ['gh issue comment 3 --body "Co-authored-by: Cursor Agent <cursoragent@cursor.com>"', 'no-tool-credit'],
+    ['git push -uf origin marco/feature', 'no-force-push'],
+    ['git --no-pager push --force origin marco/feature', 'no-force-push'],
+    ['git push origin marco/feature "--force"', 'no-force-push'],
+    ['/usr/bin/git push -f origin marco/feature', 'no-force-push'],
+    ['bash -c "git push -f origin marco/feature"', 'no-force-push'],
+    ['true & git push -f origin marco/feature', 'no-force-push'],
+    ['(git push -f origin marco/feature)', 'no-force-push'],
+    ['env git push -f origin marco/feature', 'no-force-push'],
+    ['git push origin "main"', 'no-default-branch-push'],
+    ["git push origin 'refs/heads/*:refs/heads/*'", 'no-default-branch-push'],
+    ['git push --all origin', 'no-default-branch-push'],
+    ['gh pr new --title x --body y', 'draft-only'],
+    ['gh pr create --draft=false --title x --body y', 'draft-only'],
+    ['gh pr create --title x --body "add --draft later"', 'draft-only'],
+    [`gh api graphql -f query='mutation { mergePullRequest(input: {pullRequestId: "x"}) { clientMutationId } }'`, 'draft-only'],
+    [`gh api graphql -f query='mutation { enablePullRequestAutoMerge(input: {pullRequestId: "x"}) { clientMutationId } }'`, 'draft-only'],
+    ["gh alias set m 'pr merge'", 'no-alias'],
+    ["git config alias.p 'push --force'", 'no-alias'],
+    ['git config user.Name X', 'own-identity'],
+    ['git -c User.Name=X commit -m x', 'own-identity'],
+    ['GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=user.name GIT_CONFIG_VALUE_0=X git commit -m x', 'own-identity'],
+    ['git commit -m x --trailer "Co-authored-by=Claude <c@example.dev>"', 'no-tool-credit'],
+    ['git push origin HEAD:claude/fix', 'no-tool-branch-name'],
+    ['/bin/rm -rf /etc/hosts.d', 'rm-outside-repo'],
+    ['rm -rf ~someone/Documents', 'rm-unresolvable-path'],
+    ['rm -rf {/etc/hosts.d,x}', 'rm-unresolvable-path'],
   ];
   for (const [command, rule] of BLOCKED) {
     it(`blocks ${rule}: ${command.replaceAll('\n', ' ')}`, () => {
@@ -131,6 +161,17 @@ describe('checkCommand blocks', () => {
   it('blocks a push without a refspec while on the default branch', () => {
     git(ctx.repo, ['checkout', '-q', 'main']);
     assert.equal(verdict('git push').allow, false);
+  });
+
+  it('blocks pushing HEAD while on the default branch', () => {
+    git(ctx.repo, ['checkout', '-q', 'main']);
+    assert.equal(verdict('git push origin HEAD').rule, 'no-default-branch-push');
+  });
+
+  it('reads the branch of the repo named by -C, not of the working directory', () => {
+    git(ctx.repo, ['checkout', '-q', 'main']);
+    const command = `git -C ${ctx.repo} push`;
+    assert.equal(checkCommand({ command, cwd: REPO_HOME }).rule, 'no-default-branch-push');
   });
 
   it('blocks attribution inside a heredoc commit message', () => {
@@ -160,6 +201,10 @@ describe('recursive delete and scratch space', () => {
 
   it('does not let a repo inside a temp directory delete other temp paths', () => {
     assert.equal(verdict('rm -rf /tmp/scratch-dir').rule, 'rm-outside-repo');
+  });
+
+  it('never lets a temp root itself be deleted', () => {
+    assert.equal(checkCommand({ command: 'rm -rf /tmp', cwd: REPO_HOME }).rule, 'rm-outside-repo');
   });
 });
 
@@ -223,6 +268,12 @@ describe('auditBranch', () => {
     });
     const text = auditBranch({ cwd: ctx.repo, base: 'main' }).problems.map((item) => item.problem).join('\n');
     assert.match(text, /names an AI tool/);
+  });
+
+  it('fails when the base does not resolve, instead of auditing nothing', () => {
+    const result = auditBranch({ cwd: ctx.repo, base: 'mian' });
+    assert.equal(result.ok, false);
+    assert.match(result.problems[0].problem, /does not resolve/);
   });
 
   it('reports a PR body that credits a tool', () => {
@@ -316,23 +367,23 @@ describe('PR body on an agent branch', () => {
     }
   });
 
-  it('refuses a draft PR whose body lacks the decisions section', () => {
+  it('refuses a draft PR whose body lacks the template headings', () => {
     writeFileSync(join(ctx.repo, 'body.md'), '## Summary\n\nFixes the retry loop.\n');
     const result = verdict('gh pr create --draft --title t --body-file body.md');
-    assert.equal(result.rule, 'pr-needs-decisions-section');
+    assert.equal(result.rule, 'pr-needs-template');
     assert.match(result.reason, /ai-pr-body/);
   });
 
   it('refuses an inline body that lacks it too', () => {
-    assert.equal(verdict('gh pr create --draft --title t --body "Fixes the loop"').rule, 'pr-needs-decisions-section');
+    assert.equal(verdict('gh pr create --draft --title t --body "Fixes the loop"').rule, 'pr-needs-template');
   });
 
-  it('allows a draft PR whose body file carries the section', () => {
-    writeFileSync(join(ctx.repo, 'body.md'), '## Summary\n\nFixes it.\n\n## Decisions made without you\n\nNone.\n');
+  it('allows a draft PR whose body file follows the template', () => {
+    writeFileSync(join(ctx.repo, 'body.md'), '> Fix it\n\n## 📓 Summary\nFixes it.\n\n## 🧪 Testing\n- Run it.\n');
     assert.equal(verdict('gh pr create --draft --title t --body-file body.md').allow, true);
   });
 
-  it('does not require the section on a branch the agent did not create', () => {
+  it('does not require the template on a branch the agent did not create', () => {
     git(ctx.repo, ['checkout', '-q', '-b', 'marco/by-hand']);
     assert.equal(verdict('gh pr create --draft --title t --body "By hand"').allow, true);
   });

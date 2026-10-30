@@ -13,7 +13,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { git, repoKey, repoRoot } from '../lib/repo.mjs';
-import { readJson, stateDir, writeJson } from '../lib/state.mjs';
+import { readJson, stateDir, updateJson } from '../lib/state.mjs';
 
 const BRANCHES_FILE = 'branches.json';
 const SLUG_MAX_CHARS = 40;
@@ -87,12 +87,11 @@ export function isDirty(root) {
  * @param {string} base
  */
 export function registerBranch(root, branch, base) {
-  const all = readJson(BRANCHES_FILE, {});
   const key = repoKey(root);
-  writeJson(BRANCHES_FILE, {
+  updateJson(BRANCHES_FILE, {}, (all) => ({
     ...all,
     [key]: { ...all[key], [branch]: { createdAt: new Date().toISOString(), base } },
-  });
+  }));
 }
 
 /**

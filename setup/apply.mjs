@@ -91,6 +91,21 @@ export function hookId(command) {
 }
 
 /**
+ * A hook this setup registered takes the reference's fields (a timeout added
+ * later, a loop limit) while keeping its own command spelling. Without this, a
+ * field added to the reference never reaches a machine that installed earlier.
+ * Hooks the reference does not know are returned unchanged.
+ *
+ * @param {Record<string, unknown>} hook
+ * @param {Array<Record<string, unknown>>} referenceHooks
+ * @returns {Record<string, unknown>}
+ */
+function withReferenceFields(hook, referenceHooks) {
+  const match = referenceHooks.find((candidate) => hookId(candidate.command) === hookId(hook.command));
+  return match === undefined ? hook : { ...hook, ...match, command: hook.command };
+}
+
+/**
  * Claude Code and Codex shape: event -> [{ matcher?, hooks: [{ type, command }] }].
  *
  * @param {unknown} live
@@ -102,6 +117,10 @@ export function mergeGroupedHooks(live, reference) {
   const merged = isRecord(live) ? structuredClone(live) : {};
   for (const [event, groups] of Object.entries(isRecord(reference) ? reference : {})) {
     merged[event] = Array.isArray(merged[event]) ? merged[event] : [];
+    const referenceHooks = /** @type {any[]} */ (groups).flatMap((group) => group.hooks ?? []);
+    for (const group of merged[event]) {
+      group.hooks = (group.hooks ?? []).map((hook) => withReferenceFields(hook, referenceHooks));
+    }
     const present = new Set(merged[event].flatMap((group) => (group.hooks ?? []).map((hook) => hookId(hook.command))));
     for (const group of /** @type {any[]} */ (groups)) {
       const missing = (group.hooks ?? []).filter((hook) => !present.has(hookId(hook.command)));
@@ -133,7 +152,7 @@ export function mergeCursorHooks(live, reference) {
   /** @type {Record<string, any[]>} */
   const merged = isRecord(live) ? structuredClone(live) : {};
   for (const [event, entries] of Object.entries(isRecord(reference) ? reference : {})) {
-    merged[event] = Array.isArray(merged[event]) ? merged[event] : [];
+    merged[event] = Array.isArray(merged[event]) ? merged[event].map((entry) => withReferenceFields(entry, /** @type {any[]} */ (entries))) : [];
     const present = new Set(merged[event].map((entry) => hookId(entry.command)));
     for (const entry of /** @type {any[]} */ (entries)) {
       if (!present.has(hookId(entry.command))) {

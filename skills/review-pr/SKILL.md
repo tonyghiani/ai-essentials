@@ -11,8 +11,8 @@ transform the report into copy-pasteable conventional comments.
 
 ## Path resolution
 
-Paths below are relative to this skill's directory (`~/.claude/skills/review-pr/`
-for a Claude Code install).
+Paths below are relative to this skill's own directory, wherever the tool
+installed it.
 
 ## Inputs
 
@@ -50,7 +50,7 @@ The checked-out PR branch is the HEAD; the base branch from `PR_META` is the
 comparison target.
 
 The review-team skill handles gathering context, reading reviewer personas,
-launching 6 parallel reviewers, and consolidating findings into a report.
+launching the reviewers the diff calls for, and consolidating findings into a report.
 
 ### Step 3 — Transform report into conventional comments
 
@@ -92,9 +92,8 @@ If the Review Team Report has no Critical or Important findings and Minor
 findings are few (≤ 2):
 
 ```
-This PR looks solid across all review perspectives (code quality,
-correctness, architecture, readability, product flow, observability).
-Nothing blocking — ship it 🚀
+Looked at this from <the perspectives that ran, e.g. correctness,
+readability, conventions> and found nothing blocking. LGTM.
 ```
 
 Optionally include 1-2 praise comments worth leaving on the PR.
@@ -109,7 +108,7 @@ so the user can copy the raw markdown in one shot.
 Example:
 
 ````
-📄 **file/path.ts** (line 42) — [Code Quality, Adversarial]
+📄 **file/path.ts** (line 42) — [Fresh Eyes, Adversarial]
 
 ```markdown
 suggestion: I honestly think we can simplify this a bit.

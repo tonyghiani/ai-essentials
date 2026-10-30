@@ -1,5 +1,10 @@
 # Delegation strategy: evolving ai-essentials from a style library into a delivery system
 
+> Written before the build. Where it differs from [implementation-plan.md](implementation-plan.md)
+> or the code, those win: contracts live in `contracts/` or a trusted `.ai/verify.json` (not
+> `.claude/verify.json`), there is no `setup/project-init.sh`, and agents render through
+> `setup/render_agents.py`.
+
 Built only from pages published by Anthropic (including Boris Cherny's own post and statements on
 Anthropic's site) and the Claude Code docs. Every claim was read on the publisher's own page.
 Dropped because only third-party write-ups carried them: Boris's four-step adoption framework, his

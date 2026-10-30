@@ -34,14 +34,17 @@ Install once, then check it:
 
 | You want | Do |
 |---|---|
-| A ticket taken from spec to a draft PR | In any of the three tools, ask for the `tech-lead` skill with the ticket. It branches, interviews you on the spec, implements, verifies, reviews with fresh context, and opens a draft PR |
+| A ticket taken from spec to a draft PR | `/tech-lead <ticket or description>` in Claude Code (it never starts on its own, since it branches, commits and opens a PR); in Cursor and Codex, ask for the `tech-lead` skill. It branches, interviews you on the spec, implements, verifies, reviews with fresh context, and opens a draft PR |
 | The agent to know a repo's checks | Run the `verify-contract` skill once in that repo; the contract is stored here, gitignored, not in the repo |
 | Several tickets in parallel | `ai-delegate --tool claude\|codex\|cursor "<task>"` per task (a ticket or just a description); each gets its own worktree beside the repo, a turn or time cap, and an audit |
 | One mechanical change over many files | `ai-fanout --tool claude --branch <slug> --list files.txt --prompt "Migrate {file} ..."`; runs 3 files first, then `--all` |
 | A draft PR babysat | `/loop 15m` with the `ci-babysit` skill |
-| To know the setup still works | `node scripts/evals/run.mjs --self-test` (free, 30 tasks), or `--tool claude\|codex\|cursor` for real runs |
+| To know the setup still works | `node scripts/evals/run.mjs --self-test` (free, 30 tasks), or `--tool claude\|codex\|cursor` for real runs, which report cost per task |
+| To know the reviewers still catch bugs | `node scripts/evals/review_eval.mjs` (real runs of the `reviewer` and `convention-checker` agents on planted defects and clean controls, about $0.20) |
 
 What it will not do, in any tool: credit itself on a commit, PR or comment, mark a PR ready, merge, force push, or push to a default branch. Hooks enforce that; `setup/doctor.mjs` checks the hooks and the attribution switches are in place. Details in [docs/implementation-plan.md](docs/implementation-plan.md).
+
+The guard hook reads command text, so treat it as the first layer, not the last. Headless Claude runs (`ai-delegate`, `ai-fanout`) also run in Claude Code's OS sandbox: writes only inside the worktree, the repo's git directory and the state directory, network only to GitHub and the npm registry unless you pass `--allow-domain`. For repos you delegate to, add a GitHub ruleset on the default branch (block force pushes, require a pull request review): GitHub then refuses a force push or a merge however the command was phrased, and you cannot approve your own PR, so the agent cannot merge one under your login.
 
 ## Tool compatibility
 
@@ -151,22 +154,35 @@ Reusable workflows the agent loads on demand. Each skill lives in its own folder
 | [`deep-research`](skills/deep-research/) | "become the expert", "deep dive into" | Reads docs + code, produces a structured architecture report |
 | [`gh-issue-writer`](skills/gh-issue-writer/) | "write a GitHub issue", "gh issue" | Drafts formatted issue Markdown (does not create the issue) |
 | [`grill-me`](skills/grill-me/) | "grill me", "stress-test this plan" | Interviews you on a design until decisions are settled |
-| [`pr-description-template`](skills/pr-description-template/) | "write a PR description", "create a PR" | PR body from a fixed template; can create via `gh` |
+| [`pr-description-template`](skills/pr-description-template/) | "write a PR description" | PR body text from a fixed template; never opens the PR |
 | [`resolve-merge-conflicts`](skills/resolve-merge-conflicts/) | "fix the conflicts", "merge main into this branch" | Merges the PR base, resolves conflicts by intent, verifies scoped checks, commits and pushes |
 | [`review-pr`](skills/review-pr/) | "review pr", share a PR URL | Reviews a GitHub PR with copy-pasteable line comments (uses personal voice profile by default) |
 | [`review-pr-comments`](skills/review-pr-comments/) | "should I accept this feedback" | Triages review comments against the PR diff (uses personal voice profile by default) |
-| [`review-team`](skills/review-team/) | "review team", "comprehensive review" | Runs 6 parallel reviewers and consolidates findings |
+| [`review-team`](skills/review-team/) | "review team", "multi-perspective review" | Runs three to six read-only reviewers in parallel and consolidates findings |
 
-The review-team skill runs **6 reviewers**. Persona sources:
+Delivery skills (the delegation system; see [docs/guide.md](docs/guide.md)):
 
-| Reviewer | Source |
-|----------|--------|
-| Code Quality | [`skills/branch-refactor-planner/SKILL.md`](skills/branch-refactor-planner/SKILL.md) |
-| Adversarial | [`reviewers/adversarial.md`](skills/review-team/reviewers/adversarial.md) |
-| Architecture | [`reviewers/architecture.md`](skills/review-team/reviewers/architecture.md) |
-| Fresh Eyes | [`reviewers/fresh-eyes.md`](skills/review-team/reviewers/fresh-eyes.md) |
-| Product Flow | [`reviewers/product-flow.md`](skills/review-team/reviewers/product-flow.md) |
-| Observability Expert | [`reviewers/observability-expert.md`](skills/review-team/reviewers/observability-expert.md) (Elasticsearch/OTel tuned) |
+| Skill | Started by | What it does |
+|-------|------------|--------------|
+| [`tech-lead`](skills/tech-lead/) | `/tech-lead`, `ai-delegate` | Ticket or description to a verified draft PR |
+| [`deliver`](skills/deliver/) | tech-lead, `ai-delegate --task` | One specified task: implement, verify, fresh-context review, commit |
+| [`open-draft-pr`](skills/open-draft-pr/) | tech-lead | Audits, pushes the agent's branch, opens a draft PR |
+| [`verify-contract`](skills/verify-contract/) | "set up verification" | Writes the repo's verification contract |
+| [`ci-babysit`](skills/ci-babysit/) | `/loop` | One round of fixing red CI on the agent's draft PR |
+| [`memory-distill`](skills/memory-distill/) | "distill memory" | Turns logged corrections and failed checks into memory proposals |
+
+Specialist skills the tech lead routes to by diff content: [`tdd`](skills/tdd/), [`dep-size`](skills/dep-size/), [`a11y-audit`](skills/a11y-audit/), [`i18n-sweep`](skills/i18n-sweep/), [`react-perf`](skills/react-perf/), [`api-contract-review`](skills/api-contract-review/), [`react-patterns`](skills/react-patterns/), [`marco-code-style`](skills/marco-code-style/).
+
+The review-team panel:
+
+| Reviewer | Runs | Source |
+|----------|------|--------|
+| Adversarial | always | [`reviewers/adversarial.md`](skills/review-team/reviewers/adversarial.md) |
+| Fresh Eyes | always | [`reviewers/fresh-eyes.md`](skills/review-team/reviewers/fresh-eyes.md) |
+| Conventions | always, on code | the [`convention-checker`](agents/convention-checker.md) agent |
+| Architecture | boundary, API or schema changes | [`reviewers/architecture.md`](skills/review-team/reviewers/architecture.md) |
+| Product Flow | user-visible changes | [`reviewers/product-flow.md`](skills/review-team/reviewers/product-flow.md) |
+| Observability Expert | logging, metrics, tracing, ES\|QL | [`reviewers/observability-expert.md`](skills/review-team/reviewers/observability-expert.md) (Elasticsearch/OTel tuned) |
 
 Shared assets: [`skills/shared/`](skills/shared/) (e.g. [`pr-review-voice-marco.md`](skills/shared/pr-review-voice-marco.md)).
 
@@ -178,6 +194,8 @@ Specialist personas for delegated work (subagents, parallel workers, or focused 
 
 | Agent | What it does |
 |-------|--------------|
+| [`reviewer.md`](agents/reviewer.md) | Fresh-context, read-only review of a diff against its spec; strongest model |
+| [`convention-checker.md`](agents/convention-checker.md) | Read-only pass or fail against the style rules; fast model |
 | [`marco-blogger.md`](agents/marco-blogger.md) | Personal blog voice; outputs MDX with frontmatter |
 | [`esql-expert.md`](agents/esql-expert.md) | ES\|QL queries for Elasticsearch (domain-specific) |
 

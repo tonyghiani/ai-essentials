@@ -14,3 +14,6 @@ __pycache__/
 
 # Runtime state lives in ~/.ai-essentials/state, never here
 .ai-essentials/
+
+# macOS Finder metadata
+.DS_Store

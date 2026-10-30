@@ -18,7 +18,7 @@ inform the recommended answer it offers; it cannot replace the question.
 
 Naming, file layout inside the change, test structure, which existing helper to reuse, wording of
 commit messages and PR text, and any convention already written in the rules or `marco-code-style`.
-Those are decided by the rules or by a precedent, and recorded under "Decisions made without you".
+Those are decided by the rules or by a precedent.
 
 ## Adding a class
 

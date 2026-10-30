@@ -144,11 +144,14 @@ export async function runTrial({ taskId, tool, solution }) {
 export async function runTask({ taskId, tool, trials = DEFAULT_TRIALS }) {
   const results = [];
   for (let index = 0; index < trials; index += 1) {
-    const { pass, reasons } = await runTrial({ taskId, tool });
-    results.push({ pass, reasons });
+    const { pass, reasons, summary } = await runTrial({ taskId, tool });
+    results.push({ pass, reasons, costUsd: summary?.costUsd ?? null, turns: summary?.turns ?? null });
   }
   const passed = results.filter((result) => result.pass).length;
-  return { id: taskId, trials: results, passAt1: passed / trials, passAllK: passed === trials };
+  // Only Claude reports cost; null for the other tools rather than a misleading zero.
+  const costs = results.map((result) => result.costUsd).filter((cost) => typeof cost === 'number');
+  const costUsd = costs.length === 0 ? null : costs.reduce((sum, cost) => sum + cost, 0);
+  return { id: taskId, trials: results, passAt1: passed / trials, passAllK: passed === trials, costUsd };
 }
 
 /**
@@ -196,7 +199,12 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(realpathS
   for (const taskId of ids) {
     const result = await runTask({ taskId, tool, trials });
     report.push(result);
-    process.stdout.write(`${result.passAllK ? 'pass' : 'FAIL'} ${taskId}  pass@1 ${result.passAt1.toFixed(2)}${result.passAllK ? '' : `  ${result.trials.flatMap((t) => t.reasons).join('; ')}`}\n`);
+    const cost = result.costUsd === null ? '' : `  $${result.costUsd.toFixed(2)}`;
+    process.stdout.write(`${result.passAllK ? 'pass' : 'FAIL'} ${taskId}  pass@1 ${result.passAt1.toFixed(2)}${cost}${result.passAllK ? '' : `  ${result.trials.flatMap((t) => t.reasons).join('; ')}`}\n`);
+  }
+  const spent = report.map((result) => result.costUsd).filter((cost) => typeof cost === 'number');
+  if (spent.length > 0) {
+    process.stdout.write(`total cost $${spent.reduce((sum, cost) => sum + cost, 0).toFixed(2)}\n`);
   }
   const dir = join(stateDir(), 'evals');
   mkdirSync(dir, { recursive: true });

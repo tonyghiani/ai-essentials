@@ -16,7 +16,7 @@ This skill calls `ai-work` and `ai-verify`. If a command is not found, tell the 
 - Only branches this tool created: `ai-work is-agent-branch <branch>`. Anything else: report and stop.
 - Never merge, never mark ready, never force push, never push to a default branch.
 - Never post a comment or review. Review comments become drafts in your report.
-- At most 3 fix attempts per round. At most 2 rounds on the same failure; then stop and report it.
+- At most 3 fix attempts per round. At most 2 rounds on the same failure; then stop and report it. Each round starts with no memory of the last, so keep the count in `<spec-dir>/babysit.json` (`ai-work spec-dir` prints the directory): `{ "<check name>": { "rounds": <n>, "failure": "<first error line>" } }`. Read it in step 1; after step 2, increment `rounds` for a check that failed with the same first error line again, set it to 1 for a new failure, and delete the entry for a check that is green.
 - Same rule as everywhere: no tool credit in commits or text (the no-tool-credit rule).
 
 ## Round

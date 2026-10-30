@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DECLARATIVE_TASKS } from './declarative_tasks.mjs';
+import { selfTest as reviewSelfTest } from './review_eval.mjs';
 import { listTasks, loadTask, runTrial } from './run.mjs';
 
 describe('eval tasks', () => {
@@ -27,6 +28,11 @@ describe('eval tasks', () => {
       assert.ok(task.solutions.good.length > 0 && task.solutions.bad.length > 0, task.id);
       assert.ok(Object.keys(task.expect).length > 0, task.id);
     }
+  });
+
+  it('grades every review-layer task so a known-good answer passes and a known-bad one fails', () => {
+    const wrong = reviewSelfTest().filter((row) => row.expected !== row.actual);
+    assert.deepEqual(wrong, []);
   });
 
   it('uses unique task ids', () => {

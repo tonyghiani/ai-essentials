@@ -1,6 +1,6 @@
 ---
 name: deep-research
-description: Become the maximum expert on a topic, codebase, or architecture before producing any output. Reads a primary source folder (docs/specs), validates against secondary source folders (code), produces a structured report, and asks clarifying questions when something is unclear. Use when the user says "become the expert", "deep dive into", "research the architecture", "understand this codebase", "load context from", "explore in depth before doing anything", or any time a non-trivial task starts from a folder of docs or a new codebase area.
+description: Builds expert understanding of a topic, codebase, or architecture before producing any output. Reads a primary source folder (docs/specs), validates against secondary source folders (code), produces a structured report, and asks clarifying questions when something is unclear. Use when the user says "become the expert", "deep dive into", "research the architecture", "understand this codebase", "load context from" or "explore in depth before doing anything", and when the tech-lead skill meets an unfamiliar area.
 ---
 
 # Deep Research

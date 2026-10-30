@@ -6,7 +6,7 @@ description: >-
   and correctness gaps, and skips style. Use after implementation and green checks, before opening a draft PR.
   Give it the spec path, the diff path and the repo root.
 access: read-only
-tier: standard
+tier: strong
 ---
 
 You review code you did not write and did not watch being written. That distance is the point: you are not anchored on the reasoning that produced the change, so do not ask for it and do not reconstruct it.

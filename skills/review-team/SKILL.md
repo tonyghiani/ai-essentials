@@ -1,40 +1,44 @@
 ---
 name: review-team
 description: >-
-  Launch a team of 6 specialized code reviewers in parallel to catch issues
-  from multiple perspectives. Use when the user says "review team",
-  "comprehensive review", "multi-perspective review", or wants a thorough
-  multi-angle review of branch changes or a plan.
+  Runs a panel of three to six read-only reviewers in parallel, each with a
+  distinct perspective, and consolidates their findings into one prioritized
+  report. Use when the user says "review team", "multi-perspective review" or
+  "multi-angle review" of branch changes, a module or a plan, and when the
+  tech-lead skill meets a large or risky diff.
 ---
 
 # Review Team
 
-Launch 6 specialized reviewers in parallel, each with a distinct perspective,
+Launch the selected reviewers in parallel, each with a distinct perspective,
 then consolidate findings into a single prioritized report.
 
 ## Reviewers
 
-| # | Name                  | Persona source                                  |
-|---|-----------------------|-------------------------------------------------|
-| 1 | Code Quality          | `../branch-refactor-planner/SKILL.md`           |
-| 2 | Adversarial           | `reviewers/adversarial.md`                      |
-| 3 | Architecture          | `reviewers/architecture.md`                     |
-| 4 | Fresh Eyes            | `reviewers/fresh-eyes.md`                       |
-| 5 | Product Flow          | `reviewers/product-flow.md`                     |
-| 6 | Observability Expert  | `reviewers/observability-expert.md`             |
+| Name | Runs | Source | Model |
+|---|---|---|---|
+| Adversarial | always | `reviewers/adversarial.md` | strongest available (the session model) |
+| Fresh Eyes | always | `reviewers/fresh-eyes.md` | standard tier (`sonnet` in Claude Code) |
+| Conventions | always, on code | the `convention-checker` agent | its own (`haiku`) |
+| Architecture | the diff crosses a module or package boundary, changes a public API, a persisted schema or cross-package imports | `reviewers/architecture.md` | standard tier |
+| Product Flow | the diff changes user-visible behaviour | `reviewers/product-flow.md` | standard tier |
+| Observability Expert | the diff touches logging, metrics, tracing, telemetry, or ES\|QL and Elasticsearch queries | `reviewers/observability-expert.md` | standard tier |
 
-Paths are relative to **this skill's own directory**. When installed for Claude
-Code that is `~/.claude/skills/review-team/`, so `reviewers/adversarial.md`
-resolves to `~/.claude/skills/review-team/reviewers/adversarial.md`. If a read
-fails, `ls` the skill directory rather than guessing.
+So three reviewers at least, six at most. Say which conditional reviewers you
+skipped and why. When the review runs inside a delivery that has a spec, the
+`reviewer` agent replaces Adversarial: it covers correctness and also checks
+the change against the spec.
+
+There is no Code Quality persona: style is the convention checker's job, and a
+refactoring plan is the `branch-refactor-planner` skill's, run on its own when
+the user wants one.
+
+Paths are relative to **this skill's own directory**, wherever the tool
+installed it. If a read fails, `ls` the skill directory rather than guessing.
 
 ## When to use, and when not to
 
-Six reviewers in parallel cost several times a single review. Use this skill when the user asks for it, or when the tech-lead skill finds a large or risky change: roughly 400 or more changed lines, or a change in an always-ask class (the always-ask classes). For the inner loop of a delivery use the `reviewer` and `convention-checker` agents instead; they are cheaper and read-only.
-
-## Reviewer selection
-
-Launch only the reviewers the diff calls for. Skip **Observability Expert** unless the diff touches logging, metrics, tracing, telemetry or ES|QL and Elasticsearch queries. Skip **Product Flow** for changes with no user-visible behaviour. Say which you skipped and why. Wherever this file says "6 reviewers", read "the selected reviewers".
+Each reviewer is a full agent run. Use this skill when the user asks for it, or when the tech-lead skill finds a large or risky change: roughly 400 or more changed lines, or a change in an always-ask class. For the inner loop of a delivery use the `reviewer` and `convention-checker` agents alone; they are cheaper and read-only.
 
 ## Mode detection
 
@@ -82,8 +86,11 @@ proceed normally.
 4. `git diff --name-only <base>...HEAD` for the file list
 5. `git diff <base>...HEAD` for the full diff
 6. If more than **30 changed files**, warn the user and ask whether to narrow
-   scope (by path, package, or file list) before reading everything in full.
-7. Read every changed file in full -- not just diff hunks (after scope is confirmed)
+   scope (by path, package, or file list).
+7. Write the diff to a patch file outside the repo, for example
+   `git diff <base>...HEAD > "$(mktemp -d)/review.patch"`. Reviewers read it
+   and the changed files themselves; you do not paste file contents into
+   their prompts.
 
 **Scoped review mode (user provided a target path or project):**
 
@@ -96,9 +103,9 @@ proceed normally.
    or confirm they want a full review. For very large scopes, focus on public
    API surface files, entry points, and recently modified files
    (`git log --since='2 weeks ago' --name-only -- <scope>`).
-4. Read every in-scope file in full.
+4. Write the in-scope file list to a file outside the repo.
 5. There is no diff in this mode -- reviewers evaluate the code as-is, not
-   relative to a base branch.
+   relative to a base branch, reading the listed files themselves.
 
 **Plan review mode:**
 
@@ -106,51 +113,45 @@ proceed normally.
 2. Identify files and areas the plan references
 3. Read those files for context
 
-Store the gathered context as `REVIEW_CONTEXT`. Then build **per-reviewer
-context bundles** (Step 1b) before launching workers.
+### Step 1b -- Point each reviewer at its files
 
-### Step 1b -- Build per-reviewer context bundles
+Every reviewer gets the repo root, the patch path (or the file list in scoped
+mode) and the list of files to read first. They open files themselves, so the
+brief stays small and each reviewer reads only what its focus needs:
 
-Do not paste the full `REVIEW_CONTEXT` into every worker. Filter by reviewer:
-
-| Reviewer | Context bundle |
-|----------|----------------|
-| Code Quality | Full diff + all changed source files |
-| Adversarial | Full diff + all changed source files |
-| Architecture | File list + diff + changed files that define module boundaries, public APIs, persisted schemas, and cross-package imports |
-| Fresh Eyes | **Code only:** changed file contents + diff hunks. **Exclude:** PR descriptions, commit messages, plan documents, issue text, and any narrative the orchestrator gathered |
+| Reviewer | Read first |
+|----------|------------|
+| Adversarial | All changed source files |
+| Fresh Eyes | Changed files and the patch only. **Never** give it PR descriptions, commit messages, plan documents, issue text, or any narrative you gathered |
+| Conventions | The patch, plus the absolute paths of the rule files that match the changed file types (installed in `~/.claude/guidance/`, `~/.codex/guidance/` or `~/.cursor/rules/`) |
+| Architecture | Changed files that define module boundaries, public APIs, persisted schemas, and cross-package imports |
 | Product Flow | Changed UI components, routes, hooks managing user state, and server/API handlers that serve the UI |
 | Observability Expert | Files touching queries, alerts, metrics, logging, telemetry, LLM prompts that generate observability queries, and threshold/aggregation logic |
 
-If a reviewer has no matching files in the changeset, give them the diff summary
-and file list only — they should report "None." for all severity sections unless
-the diff itself reveals issues in their domain.
+### Step 2 -- Read the selected persona files
 
-When total context would exceed practical limits (roughly > 40 files or very
-large files), summarize non-critical files as path + one-line purpose for
-Architecture and Observability; keep full content for Code Quality and
-Adversarial on the highest-risk files the user confirmed.
+Read the persona file of each selected reviewer (not the convention checker,
+which is an agent with its own instructions) in one parallel batch. You will
+embed each verbatim in the matching reviewer prompt.
 
-### Step 2 -- Read all persona files
+### Step 3 -- Launch the selected reviewers in parallel
 
-Read **all 6 persona files listed in the table above** in a single parallel
-batch. Store each file's content -- you will embed it verbatim in the matching
-reviewer prompt.
-
-### Step 3 -- Launch 6 reviewers in parallel
-
-Run all 6 reviewers **concurrently** when your environment supports parallel
-workers (subagents, task delegation, background agents). If parallel execution
-is not available, run them sequentially; consolidation in Step 4 is the same.
+Run them **concurrently** when your environment supports parallel workers
+(subagents, task delegation, background agents). If it does not, run them
+sequentially; consolidation in Step 4 is the same.
 
 Send one prompt per reviewer, combining:
 
 1. The persona instructions (from the file read in Step 2)
-2. That reviewer's **context bundle** from Step 1b (not the full `REVIEW_CONTEXT`)
+2. That reviewer's file pointers from Step 1b
 3. `PREVIOUS_FINDINGS` from Step 0 (if any -- see block below)
 4. The output format template (copy the block below verbatim)
 
-For **Fresh Eyes**, add this line at the top of the context bundle:
+Give the convention checker its usual brief (patch path and rule paths) and
+map its violations into the Minor section unless a rule file marks one as
+blocking.
+
+For **Fresh Eyes**, add this line at the top of its prompt:
 
 ```
 BLIND REVIEW: You have not seen the PR description, commit messages, or design
@@ -185,12 +186,14 @@ Focus your effort on NEW findings not covered below.
 When your tool exposes delegated workers, prefer parallel launch with
 read-only constraints. Examples:
 
-- **Cursor**: one message with 6 Task calls; set `readonly: true` and a
-  general-purpose subagent type; inherit the session model unless told otherwise.
-- **Claude Code / Codex / similar**: spawn parallel subagent or worker sessions
-  with the same prompt bundle and a no-write constraint.
+- **Claude Code**: one message with one Agent call per reviewer. The
+  convention checker is the `convention-checker` agent type. For personas, use
+  a general-purpose agent, set `model` from the table above, and state the
+  no-write constraint in the prompt.
+- **Cursor**: one message with one Task call per reviewer; set `readonly: true`.
+- **Codex / similar**: parallel worker sessions with a read-only sandbox.
 
-If none of the above applies, run the six prompts sequentially in this chat.
+If none of the above applies, run the prompts sequentially in this chat.
 
 #### Output format to include in every reviewer prompt
 
@@ -222,7 +225,7 @@ If PREVIOUS FINDINGS were provided, prefix each re-reported finding with
 
 ### Step 4 -- Consolidate
 
-After all 6 reviewers return:
+After every selected reviewer returns:
 
 1. Group findings by file path, then by line number / range.
 2. When two or more reviewers flag the same location, merge into one item

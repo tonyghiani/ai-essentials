@@ -1,6 +1,6 @@
 ---
 name: branch-refactor-planner
-description: Critically review all code changes on the current branch against the base branch, identify improvement opportunities across naming, structure, DRY/KISS/YAGNI, declarative style, self-documenting code, edge cases, testing, and general best practices, then produce a categorized refactoring plan with prioritized action items. Use when the user asks to review, clean up, or refactor branch changes, or mentions "refactor plan", "code quality review", or "clean up this branch".
+description: Critically review all code changes on the current branch against the base branch, identify improvement opportunities across naming, structure, DRY/KISS/YAGNI, declarative style, self-documenting code, edge cases, testing, and general best practices, then produce a categorized refactoring plan with prioritized action items. Produces a plan, not a bug review. Use when the user asks for a "refactor plan", a "code quality review", or to "clean up this branch".
 ---
 
 # Branch Refactor Planner

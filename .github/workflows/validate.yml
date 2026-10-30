@@ -1,0 +1,28 @@
+# Structure checks and every test suite, including the eval graders' self-test.
+# Nothing here calls a model, so a run costs runner minutes only.
+# macOS because the scripts target it (perl alarm instead of timeout, /private/tmp paths).
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Git identity for the test fixtures that commit
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.com"
+      - name: Validate and run the tests
+        run: VALIDATE_TESTS=1 ./scripts/validate.sh

@@ -3,6 +3,12 @@
 Companion to [delegation-strategy.md](delegation-strategy.md), which holds the sourced principles.
 This file is the change list.
 
+The workstream sections keep the names used while planning. The files built are `setup/apply.mjs`
+and `setup/doctor.mjs` (not `.sh`), `scripts/guard/audit_branch.mjs`, and
+`skills/tech-lead/always-ask.md` (not `policy/always-ask.md`); there is no
+`codex/config.reference.toml`. Cursor headless runs (W5) are still untested against a real `agent`
+install.
+
 ## Status
 
 All workstreams are built, tested and installed on this machine.
@@ -33,9 +39,10 @@ Four things were wrong and are fixed:
   protecting, at the cheapest level, never assertions against copies of config or constants, never mirrors of the implementation, never
   padding; zero tests is a valid answer, stated with a reason. Wired into `tdd`, `deliver`, `grill-me`, the `reviewer` agent (flags
   offending tests as findings), the global instructions, and five new evals including one capped at a number of added tests.
-- **The PR body always has "Decisions made without you".** It used to depend on the agent remembering a line in a skill. Now
-  `scripts/work/pr_body.mjs` builds the body (description plus the run's `decisions-made.md`, or an explicit "None"), `open-draft-pr`
-  runs it and checks it, and the guard refuses `gh pr create` from an agent branch whose body lacks the section.
+- **The PR body always follows `pr-description-template`.** It used to depend on the agent remembering the template. Now
+  `scripts/work/pr_body.mjs` validates the description (title line, `## 📓 Summary`, `## 🧪 Testing`), `open-draft-pr` runs it and
+  checks it, and the guard refuses a PR from an agent branch whose body lacks the template headings. There is no
+  "decisions" section in the PR body, by decision.
 - **ai-essentials is no longer in your daily path.** Worktrees are created beside the repo (`<repo>.worktrees/<slug>`, or
   `AI_WORKTREES_DIR`), not under `~/.ai-essentials`. You run `ai-delegate` and `ai-fanout`, links the installer puts in `~/.local/bin`,
   never a path into this repo. `ai-fanout --branch <slug>` creates its own branch. New contract field `worktree.setup` bootstraps a
@@ -132,6 +139,32 @@ The first full run found two real problems, both fixed:
   files with the editor tools, which the hook does not inspect.
 - **Names:** `scripts/guard/audit_branch.mjs`, `scripts/guard/scan_repo.mjs`, `scripts/lib/`, `scripts/work/`.
 - **Fixed in passing:** `resolve-merge-conflicts` no longer names one project's type-check command.
+
+### Changes after the first review (2026-10-30)
+
+- **Guard parsing.** Commands are split and tokenised with quotes respected (`scripts/lib/shell.mjs`), every git
+  global option is skipped, short-flag clusters are expanded, and `bash -c`, `eval`, `env` and absolute binary
+  paths are unwrapped. Closed: `git push -uf`, `git --no-pager push --force`, quoted `"--force"` and `"main"`,
+  wildcard and matching refspecs, `git push origin HEAD` on the default branch, `gh pr new`, `--draft=false`,
+  GraphQL merge and auto-merge, gh and git aliases, case-variant identity keys, `GIT_CONFIG_KEY_n`, `--trailer
+  Key=Value`, `/bin/rm`, `~user` and brace paths, and temp roots. A crash on a git, gh or rm command now blocks
+  instead of allowing (`checkCommandFailClosed`).
+- **Stop gate.** A run of failing stops ends after 5 whatever the output (`MAX_CONSECUTIVE_BLOCKS`), timings and
+  temp paths no longer make every failure look new, all checks share a 1080s budget under the 1200s hook
+  timeout, and a non-numeric `timeoutSec` is an invalid contract instead of a silent pass.
+- **Audit.** An unresolvable base fails the audit; `ai-delegate` pins a detached HEAD to its commit.
+- **Sandbox.** Headless Claude runs get an OS sandbox through `--settings` (`scripts/work/sandbox_settings.mjs`),
+  checked with a real run: home-directory writes and unlisted hosts refused, worktree commits allowed.
+- **Parallel tasks.** `ai-delegate --spec --task --base` runs one task with `deliver` and pushes nothing; the tech
+  lead merges and opens the one PR. `tech-lead` is `disable-model-invocation`; `ai-delegate` starts it as
+  `/tech-lead`.
+- **Context.** The TS invariants moved out of `claude/CLAUDE.md` into `claude/rules/typescript-invariants.md`
+  (`paths:` scoped, linked at `~/.claude/rules`); the full rules are linked at `~/.claude/guidance`.
+- **Review.** `reviewer` runs on the strong tier. `review-team` runs three to six reviewers, passes paths instead
+  of pasted files, and uses `convention-checker` in place of the Code Quality persona.
+  `scripts/evals/review_eval.mjs` measures whether the reviewers catch planted defects.
+- **Traces and cost.** Claude delegated runs keep a `stream-json` trace (`run.jsonl`); the summary and the eval
+  report carry `costUsd` and `turns`.
 
 ## Decisions
 
@@ -379,7 +412,7 @@ passes and the output is shown.
   6. **Plan gate.** Show the breakdown and the decisions already made; wait for approval until the
      per-class threshold of 5 is met.
   7. **Run, verify, review, describe.** The Stop hook gates each worker; reviewers get fresh context;
-     `pr-description-template` writes the body with a "Decisions made without you" section.
+     `pr-description-template` writes the body.
   8. **Hand off.** `open-draft-pr`, then stop.
 - **`open-draft-pr`:** confirms the branch is agent-created and checks are green, runs
   `audit-branch.mjs`, pushes, then `gh pr create --draft` with the body from

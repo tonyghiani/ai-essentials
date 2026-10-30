@@ -43,12 +43,20 @@ export function auditBranch({ cwd, base, bodyFile }) {
   }
 
   const range = base ?? defaultBase(root);
-  const log =
-    git(root, [
-      'log',
-      range === null ? 'HEAD' : `${range}..HEAD`,
-      `--format=%H${FIELD_SEPARATOR}%an${FIELD_SEPARATOR}%ae${FIELD_SEPARATOR}%cn${FIELD_SEPARATOR}%ce${FIELD_SEPARATOR}%B${RECORD_SEPARATOR}`,
-    ]) ?? '';
+  // An unresolvable base used to read as "zero commits, clean"; an audit that checked nothing must fail.
+  if (range !== null && git(root, ['rev-parse', '--verify', '--quiet', `${range}^{commit}`]) === null) {
+    problems.push({ commit: '-', problem: `base "${range}" does not resolve to a commit, so nothing was audited` });
+    return { ok: false, commits: 0, problems };
+  }
+  const log = git(root, [
+    'log',
+    range === null ? 'HEAD' : `${range}..HEAD`,
+    `--format=%H${FIELD_SEPARATOR}%an${FIELD_SEPARATOR}%ae${FIELD_SEPARATOR}%cn${FIELD_SEPARATOR}%ce${FIELD_SEPARATOR}%B${RECORD_SEPARATOR}`,
+  ]);
+  if (log === null) {
+    problems.push({ commit: '-', problem: 'git log failed (no commits yet?), so nothing was audited' });
+    return { ok: false, commits: 0, problems };
+  }
   const records = log.split(RECORD_SEPARATOR).map((record) => record.trim()).filter(Boolean);
 
   for (const record of records) {

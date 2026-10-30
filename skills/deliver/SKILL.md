@@ -14,7 +14,7 @@ This skill calls `ai-work` (spec directory, diff), `ai-verify` (the repo's verif
 ## Preconditions
 
 - You are on a branch you created: `ai-work is-agent-branch`. If not, stop; the `tech-lead` skill creates it.
-- A spec with this task's acceptance criteria exists in the spec directory (`cli.mjs spec-dir`), or the user stated them. If neither, ask for them first.
+- A spec with this task's acceptance criteria exists in the spec directory (`ai-work spec-dir`), or the user stated them. If neither, ask for them first.
 - A verification contract resolves for this repo (`ai-verify --where`). If not, run `verify-contract`.
 
 ## Steps
@@ -53,7 +53,7 @@ ai-work diff
 ```
 
 - `reviewer` agent: the spec path, the patch path, the repo root. It checks requirements, whether behaviour worth protecting has a test, tests that fail the test-value rule (assertions against copies, mirrors of the implementation, padding), and correctness gaps, and skips style.
-- `convention-checker` agent: the patch path and the rule paths that apply. It returns PASS or violations.
+- `convention-checker` agent: the patch path and the absolute paths of the rule files that apply. They are installed in `~/.claude/guidance/` (Claude Code), `~/.codex/guidance/` (Codex) and `~/.cursor/rules/` (Cursor); pick by the changed files' types, for example `typescript-style.mdc` and `project-structure.mdc` for `.ts`. It returns PASS or violations, and a PASS with no rule file read is not a pass: check its report names the files it read.
 
 Without subagents, do both as separate passes reading only those inputs.
 

@@ -103,6 +103,15 @@ if [[ "$claude_md_lines" -ge 200 ]]; then
   err "claude/CLAUDE.md is $claude_md_lines lines; keep it under 200"
 fi
 
+# The banned-phrase list is written three times (the rule, and the always-on summaries for Claude and
+# Codex). Each phrase the rule bans must appear in both summaries, or a tool quietly stops avoiding it.
+while IFS= read -r phrase; do
+  [[ -z "$phrase" ]] && continue
+  for summary in claude/CLAUDE.md codex/INSTRUCTIONS.md; do
+    grep -qF -- "\`$phrase\`" "$ROOT/$summary" || err "$summary is missing the banned phrase \`$phrase\` from rules/no-ai-prose.mdc"
+  done
+done < <(awk '/^## Words and phrases/{on=1; next} /^## /{on=0} on' "$ROOT/rules/no-ai-prose.mdc" | grep -oE '`[^`]+`' | tr -d '`')
+
 # Every agent must render for every tool, and read-only agents must stay read-only there.
 if command -v python3 &>/dev/null; then
   render_tmp="$(mktemp -d)"

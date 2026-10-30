@@ -10,6 +10,10 @@ install_claude_code() {
   _safe_link "$repo/skills"          "$HOME/.claude/skills"
   _safe_link "$repo/claude/hooks"    "$HOME/.claude/hooks"
   _safe_link "$repo/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+  # Path-scoped rules load only when a matching file is touched, so the TS invariants cost nothing in
+  # sessions without TypeScript. The full .mdc rules are reference files the convention checker reads.
+  _safe_link "$repo/claude/rules"    "$HOME/.claude/rules"
+  _safe_link "$repo/rules"           "$HOME/.claude/guidance"
 
   # Agents are generated, not linked: a read-only reviewer must get `tools:` restrictions,
   # which the neutral source format does not carry.

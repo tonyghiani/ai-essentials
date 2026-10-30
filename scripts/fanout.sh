@@ -5,12 +5,14 @@
 # Usage:
 #   ai-fanout --tool claude|codex|cursor --list FILE --prompt TEXT [--all]
 #                     [--branch SLUG] [--trial N] [--repo DIR] [--max-turns N] [--budget-usd X] [--timeout-min M]
+#                     [--no-sandbox] [--allow-domain HOST]... [--allow-write PATH]...
 #
 # TEXT may contain {file}. Each run must answer OK or FAIL on its last line. By default only the
 # first 3 files run (a trial): read what went wrong, fix the prompt, then pass --all. The repo must
 # be on a branch the agent created; pass --branch SLUG to create one from the current HEAD.
 #
 # Caps per run: --max-turns and --max-budget-usd for Claude; --timeout-min (perl alarm) for Codex and Cursor.
+# Claude runs sandboxed, as in ai-delegate (see scripts/work/sandbox_settings.mjs); --no-sandbox turns it off.
 # Test seam: AI_ESSENTIALS_TOOL_CMD replaces the tool, with $AI_ESSENTIALS_PROMPT and $AI_ESSENTIALS_FILE set.
 set -euo pipefail
 
@@ -26,6 +28,7 @@ HERE="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 WORK_CLI=(node "$HERE/work/cli.mjs")
 
 TOOL="" LIST="" PROMPT="" BRANCH_SLUG="" ALL=false TRIAL=3 REPO="$PWD" MAX_TURNS=20 BUDGET_USD=2 TIMEOUT_MIN=15 TIMEOUT_SEC=""
+SANDBOX=true SANDBOX_FLAGS=()
 
 die() { printf 'fanout: %s\n' "$*" >&2; exit 1; }
 
@@ -42,7 +45,9 @@ while [[ $# -gt 0 ]]; do
     --budget-usd) BUDGET_USD="$2"; shift 2 ;;
     --timeout-min) TIMEOUT_MIN="$2"; shift 2 ;;
     --timeout-sec) TIMEOUT_SEC="$2"; shift 2 ;;
-    -h|--help) sed -n '2,13p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    --no-sandbox) SANDBOX=false; shift ;;
+    --allow-domain|--allow-write) SANDBOX_FLAGS+=("$1" "$2"); shift 2 ;;
+    -h|--help) sed -n '2,16p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
 done
@@ -67,6 +72,15 @@ if [[ "$ALL" != true ]]; then
 fi
 
 TIMEOUT_SEC="${TIMEOUT_SEC:-$((TIMEOUT_MIN * 60))}"
+CLAUDE_EXTRA=()
+if [[ "$TOOL" == claude && "$SANDBOX" == true ]]; then
+  STATE="${AI_ESSENTIALS_STATE:-$HOME/.ai-essentials/state}"
+  RUN_SETTINGS="$STATE/run-settings/fanout-$(basename "$REPO").json"
+  node "$HERE/work/sandbox_settings.mjs" --out "$RUN_SETTINGS" \
+    --git-dir "$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir)" --state "$STATE" \
+    ${SANDBOX_FLAGS[@]+"${SANDBOX_FLAGS[@]}"}
+  CLAUDE_EXTRA=(--settings "$RUN_SETTINGS")
+fi
 OK=0 FAILED=0
 for file in "${FILES[@]}"; do
   prompt="${PROMPT//\{file\}/$file}
@@ -78,7 +92,7 @@ Reply with OK or FAIL as the last line. Do not push, do not open a PR."
   if [[ -n "${AI_ESSENTIALS_TOOL_CMD:-}" ]]; then
     AI_ESSENTIALS_PROMPT="$prompt" AI_ESSENTIALS_FILE="$file" perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SEC" bash -c "$AI_ESSENTIALS_TOOL_CMD" >"$out" 2>&1 || status=$?
   elif [[ "$TOOL" == claude ]]; then
-    claude -p "$prompt" --permission-mode auto --max-turns "$MAX_TURNS" --max-budget-usd "$BUDGET_USD" </dev/null >"$out" 2>&1 || status=$?
+    claude -p "$prompt" --permission-mode auto --max-turns "$MAX_TURNS" --max-budget-usd "$BUDGET_USD" ${CLAUDE_EXTRA[@]+"${CLAUDE_EXTRA[@]}"} </dev/null >"$out" 2>&1 || status=$?
   elif [[ "$TOOL" == codex ]]; then
     perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SEC" codex exec --approve-for-me -C "$REPO" "$prompt" </dev/null >"$out" 2>&1 || status=$?
   elif [[ "$TOOL" == cursor ]]; then

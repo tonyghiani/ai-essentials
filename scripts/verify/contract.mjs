@@ -25,7 +25,7 @@ import { join } from 'node:path';
 import { keyToFileName, repoKey } from '../lib/repo.mjs';
 import { isRecord } from '../lib/hook_io.mjs';
 import { repoHome } from '../lib/paths.mjs';
-import { readJson, writeJson } from '../lib/state.mjs';
+import { readJson, updateJson } from '../lib/state.mjs';
 
 export { repoHome };
 
@@ -58,6 +58,21 @@ function commandProblem(command, label) {
 }
 
 /**
+ * A bad timeout makes spawnSync throw, and the Stop hook would then fail open
+ * on every turn, so it is caught here as an invalid contract instead.
+ *
+ * @param {unknown} timeoutSec
+ * @param {string} label
+ * @returns {string | null}
+ */
+function timeoutProblem(timeoutSec, label) {
+  if (timeoutSec !== undefined && !(typeof timeoutSec === 'number' && Number.isFinite(timeoutSec) && timeoutSec > 0)) {
+    return `${label}.timeoutSec must be a positive number of seconds`;
+  }
+  return null;
+}
+
+/**
  * @param {unknown} value
  * @returns {string | null} A problem description, or null when the contract is valid.
  */
@@ -69,7 +84,7 @@ export function contractProblem(value) {
     if (!isRecord(check) || typeof check.name !== 'string') {
       return `checks[${index}] needs a string "name"`;
     }
-    const problem = commandProblem(check.cmd, `checks[${index}]`);
+    const problem = commandProblem(check.cmd, `checks[${index}]`) ?? timeoutProblem(check.timeoutSec, `checks[${index}]`);
     if (problem !== null) {
       return problem;
     }
@@ -85,7 +100,9 @@ export function contractProblem(value) {
       return 'worktree.copy must be an array of file paths';
     }
     for (const [index, step] of (Array.isArray(value.worktree.setup) ? value.worktree.setup : []).entries()) {
-      const problem = isRecord(step) ? commandProblem(step.cmd, `worktree.setup[${index}]`) : `worktree.setup[${index}] must be an object with a cmd`;
+      const problem = isRecord(step)
+        ? (commandProblem(step.cmd, `worktree.setup[${index}]`) ?? timeoutProblem(step.timeoutSec, `worktree.setup[${index}]`))
+        : `worktree.setup[${index}] must be an object with a cmd`;
       if (problem !== null) {
         return problem;
       }
@@ -95,7 +112,7 @@ export function contractProblem(value) {
     if (!isRecord(value.format)) {
       return 'format must be an object';
     }
-    return commandProblem(value.format.cmd, 'format');
+    return commandProblem(value.format.cmd, 'format') ?? timeoutProblem(value.format.timeoutSec, 'format');
   }
   return null;
 }
@@ -114,8 +131,7 @@ function sha256(path) {
  * @param {string} path
  */
 export function trustContract(path) {
-  const trusted = readJson(TRUST_FILE, {});
-  writeJson(TRUST_FILE, { ...trusted, [realpathSync(path)]: sha256(path) });
+  updateJson(TRUST_FILE, {}, (trusted) => ({ ...trusted, [realpathSync(path)]: sha256(path) }));
 }
 
 /**

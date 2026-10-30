@@ -61,6 +61,8 @@ export function checkLinks(home) {
     [join(home, '.claude', 'skills'), join(REPO, 'skills')],
     [join(home, '.claude', 'hooks'), join(REPO, 'claude', 'hooks')],
     [join(home, '.claude', 'CLAUDE.md'), join(REPO, 'claude', 'CLAUDE.md')],
+    [join(home, '.claude', 'rules'), join(REPO, 'claude', 'rules')],
+    [join(home, '.claude', 'guidance'), join(REPO, 'rules')],
     [join(home, '.claude', 'agents'), join(home, '.ai-essentials', 'generated', 'claude', 'agents')],
     [join(home, '.cursor', 'hooks'), join(REPO, 'cursor', 'hooks')],
     [join(home, '.cursor', 'agents'), join(home, '.ai-essentials', 'generated', 'cursor', 'agents')],

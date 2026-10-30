@@ -30,7 +30,7 @@ This skill calls `ai-work`, `ai-verify`, `ai-pr-body` and `ai-audit`. If a comma
   ai-pr-body
   ```
 
-  It appends the section `## Decisions made without you` from the run's `decisions-made.md` (or states that there were none) and writes `pr-body.md`. Never open the PR from the description alone: the guard refuses `gh pr create` from an agent branch whose body lacks that section.
+  It refuses a description that drifted from the template (missing title line, missing `## 📓 Summary` or `## 🧪 Testing`) and writes `pr-body.md`. Never open the PR from a body that did not pass: the guard refuses it from an agent branch whose body lacks the template headings. Add no other section.
 
 ### 2. Audit
 

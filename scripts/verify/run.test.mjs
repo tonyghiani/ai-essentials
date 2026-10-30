@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { keyToFileName, repoKey, repoRoot } from '../lib/repo.mjs';
 import { trustContract } from './contract.mjs';
 import { formatFile } from './format_file.mjs';
-import { MAX_IDENTICAL_FAILURES, runVerify } from './run.mjs';
+import { MAX_CONSECUTIVE_BLOCKS, MAX_IDENTICAL_FAILURES, runVerify } from './run.mjs';
 
 const REPO_HOME = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const NODE = process.execPath;
@@ -170,6 +170,24 @@ describe('runVerify', () => {
       runVerify({ cwd: ctx.repo, sessionId: 's1' }).status,
     );
     assert.deepEqual(statuses, ['fail', 'fail', 'escalate', 'skipped']);
+  });
+
+  it('ends the loop even when the failing output never repeats', () => {
+    touchSource();
+    const randomFailure = [NODE, '-e', 'console.error(Math.random().toString(36)); process.exit(1)'];
+    writeContract({ checks: [{ name: 'flaky', cmd: randomFailure }] });
+    const statuses = Array.from({ length: MAX_CONSECUTIVE_BLOCKS + 1 }, () =>
+      runVerify({ cwd: ctx.repo, sessionId: 's-random' }).status,
+    );
+    assert.deepEqual(statuses.slice(-2), ['escalate', 'skipped']);
+  });
+
+  it('reports a contract timeout that is not a positive number as invalid', () => {
+    touchSource();
+    writeContract({ checks: [{ name: 'lint', cmd: PASSING_CMD, timeoutSec: '1m' }] });
+    const result = runVerify({ cwd: ctx.repo });
+    assert.equal(result.status, 'fail');
+    assert.match(result.message, /timeoutSec/);
   });
 
   it('restarts the failure count after a passing run', () => {

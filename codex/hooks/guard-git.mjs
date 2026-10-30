@@ -16,7 +16,7 @@ import {
   pickString,
   readHookInput,
 } from '../../scripts/lib/hook_io.mjs';
-import { checkCommand } from '../../scripts/guard/git.mjs';
+import { checkCommandFailClosed } from '../../scripts/guard/git.mjs';
 
 const BLOCK_EXIT_CODE = 2;
 
@@ -25,7 +25,10 @@ try {
   const toolInput = isRecord(input.tool_input) ? input.tool_input : {};
   const command = pickString(toolInput, ['command', 'cmd']) ?? pickString(input, ['command']);
   if (command !== undefined) {
-    const verdict = checkCommand({ command, cwd: pickCwd(input) });
+    const verdict = checkCommandFailClosed({ command, cwd: pickCwd(input) });
+    if (verdict.error !== undefined) {
+      logHookError('guard-git', verdict.error);
+    }
     if (!verdict.allow) {
       process.stderr.write(`Blocked by the agent guard (${verdict.rule}): ${verdict.reason}\n`);
       process.exit(BLOCK_EXIT_CODE);

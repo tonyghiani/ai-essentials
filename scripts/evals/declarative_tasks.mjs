@@ -963,10 +963,10 @@ ${COMMIT} "Greet by time of day"`.replace('${COMMIT}', COMMIT),
     expect: { testsPass: true, committed: true, questions: false, mustChange: ['greeting.js'], maxAddedTests: { file: 'greeting.test.js', max: 3 } },
   },
   {
-    id: 'pr-body-lists-decisions',
+    id: 'pr-body-follows-template',
     group: 'decide',
     kind: 'regression',
-    covers: 'The PR body an agent prepares carries the "Decisions made without you" section with what it decided',
+    covers: 'The PR body an agent prepares follows the pr-description-template, icon headings included',
     ticket:
       "Fix the typo in label.js ('Savee' should be 'Save') and commit it. Then prepare the body of the draft PR the way open-draft-pr does, in the spec directory, without pushing or opening anything.",
     contract: NO_CHECKS,
@@ -976,14 +976,12 @@ ${COMMIT} "Greet by time of day"`.replace('${COMMIT}', COMMIT),
 ${COMMIT} "Fix the label typo"
 printf '> Fix the label typo
 
-## Summary
+## 📓 Summary
 Corrects the Save button label.
 
-## Testing
+## 🧪 Testing
 - Open the form and check the label.
 ' > ${SPEC_DIR}/pr-description.md
-printf -- '- Left the label un-tested (source: rule test-value) because a string typo has no behaviour to protect
-' > ${SPEC_DIR}/decisions-made.md
 node "$AI_ESSENTIALS_REPO/scripts/work/pr_body.mjs"`.replaceAll('${COMMIT}', COMMIT).replaceAll('${SPEC_DIR}', SPEC_DIR),
       bad: String.raw`perl -pi -e 's/Savee/Save/' label.js
 ${COMMIT} "Fix the label typo"
@@ -993,6 +991,6 @@ printf '> Fix the label typo
 Corrects the Save button label.
 ' > ${SPEC_DIR}/pr-body.md`.replaceAll('${COMMIT}', COMMIT).replaceAll('${SPEC_DIR}', SPEC_DIR),
     },
-    expect: { committed: true, specFileContains: [{ file: 'pr-body.md', regex: '^## Decisions made without you$' }] },
+    expect: { committed: true, specFileContains: [{ file: 'pr-body.md', regex: '^## 🧪 Testing$' }] },
   },
 ];

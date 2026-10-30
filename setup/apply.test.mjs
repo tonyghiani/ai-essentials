@@ -52,6 +52,16 @@ describe('merge helpers', () => {
     assert.equal(mergeGroupedHooks(live, reference).Stop[0].hooks.length, 1);
   });
 
+  it('gives an already-installed hook the fields added to the reference later, keeping its command', () => {
+    const live = { Stop: [{ hooks: [{ type: 'command', command: 'node /abs/.claude/hooks/verify-on-stop.mjs' }] }] };
+    const reference = { Stop: [{ hooks: [{ type: 'command', command: 'node "$HOME"/.claude/hooks/verify-on-stop.mjs', timeout: 1200 }] }] };
+    assert.deepEqual(mergeGroupedHooks(live, reference).Stop[0].hooks[0], {
+      type: 'command',
+      command: 'node /abs/.claude/hooks/verify-on-stop.mjs',
+      timeout: 1200,
+    });
+  });
+
   it('adds a missing hook to the existing group with the same matcher', () => {
     const live = { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'node /x/hooks/other.mjs' }] }] };
     const reference = { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'node /y/hooks/guard-git.mjs' }] }] };

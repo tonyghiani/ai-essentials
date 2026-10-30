@@ -1,6 +1,7 @@
 ---
 name: tech-lead
-description: Take a task from spec to a verified draft PR, working mostly autonomously. The task can be a ticket or issue link, or just a plain description with no ticket at all. Interviews the user on the spec, sizes the work, routes each piece to the right skill or fresh-context agent, runs verification and review, and hands off a draft PR. Use when the user says "tech lead", "take this", "delegate this", "work on this end to end", "own this task", or describes something to build or fix and wants it delivered, not just discussed.
+description: Takes a task from spec to a verified draft PR, working mostly autonomously. The task can be a ticket or issue link, or just a plain description with no ticket at all. Interviews the user on the spec, sizes the work, routes each piece to the right skill or fresh-context agent, runs verification and review, and hands off a draft PR. Started by the user with /tech-lead, or by ai-delegate.
+disable-model-invocation: true
 ---
 
 # Tech lead
@@ -61,12 +62,13 @@ Make every question answerable in one word: numbered, with your recommended answ
 - a rule or `marco-code-style` states it, or
 - a precedent applies automatically: `ai-decisions match --class <class>` returns only precedents that are confirmed at least twice, not contradicted, in scope, and outside the always-ask classes.
 
-If so, decide, and append one bullet to `<spec-dir>/decisions-made.md`: `- <decision> (source: rule <name> | precedent D-nnn | spec) because <why>`. These bullets become the PR's "Decisions made without you" section, so write each so the user can overrule it. If the class is always-ask, ask even when a precedent exists, and offer the precedent as your recommendation.
+If so, decide and move on. If the class is always-ask, ask even when a precedent exists, and offer the precedent as your recommendation.
 
 ### 3. Size the work
 
 - One task, or tasks that touch the same files: do it yourself in order, in this session.
-- Tasks that touch disjoint files and do not depend on each other: they can run in parallel, each in its own worktree and branch with `ai-delegate` (a command the installer puts on the PATH), at most 4 at once.
+- Tasks that touch disjoint files and do not depend on each other: they can run in parallel, each in its own worktree and branch, at most 4 at once. Commit anything the tasks build on first, since each branches from your branch's last commit, then start each task with `ai-delegate --tool <tool> --spec <spec-dir>/SPEC.md --task <id> --base <your-branch> "<brief>"`. The brief carries what step 5 lists that the spec does not. Each run implements its one task with `deliver`, commits, and pushes nothing.
+- When they finish, read each JSON summary: `questions: true` means the run stopped on an always-ask question (in its spec directory's `questions.md`), so put it to the user. Merge each clean branch into yours with `git merge --no-ff`, run the contract on the result, and open the one draft PR yourself. Remove the worktrees with `ai-delegate --remove`.
 - Never run several agents inside one task. A subagent is for a fresh reviewer, noisy output, or a read-only search.
 
 ### 4. Route
@@ -118,15 +120,15 @@ When every class reports `gate: off`, skip the approval wait and show the same m
 
 ### 7. Run
 
-For each task, follow the `deliver` skill: implement, run the verification contract, review with fresh context, fix. Parallel tasks run through `ai-delegate`.
+For each task, follow the `deliver` skill: implement, run the verification contract, review with fresh context, fix. Parallel tasks run through `ai-delegate --task` as described in step 3; review the merged result, not each branch alone.
 
 The Stop hook runs the contract on every turn and blocks a failing one. Fix the cause; never weaken a check.
 
 ### 8. Hand off
 
-1. Write the PR description with `pr-description-template` to `<spec-dir>/pr-description.md`. Do not add the decisions section yourself.
-2. Run `open-draft-pr`. It builds the body with `ai-pr-body` (description plus a "Decisions made without you" section from `decisions-made.md`), audits the commits and body, pushes the branch, and opens the draft. The guard refuses a PR from your branch whose body lacks that section.
-3. Report to the user: what changed, the evidence (commands and output), decisions made without them, follow-ups drafted but not filed, and the draft PR link. Keep it short.
+1. Write the PR description with `pr-description-template` to `<spec-dir>/pr-description.md`. Follow the template exactly, heading icons included; no extra sections.
+2. Run `open-draft-pr`. It validates the body against the template with `ai-pr-body`, audits the commits and body, pushes the branch, and opens the draft. The guard refuses a PR from your branch whose body lacks the template headings.
+3. Report to the user: what changed, the evidence (commands and output), follow-ups drafted but not filed, and the draft PR link. Keep it short.
 
 ### 9. Learn
 

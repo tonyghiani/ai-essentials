@@ -4,12 +4,22 @@
 #
 # Usage:
 #   ai-delegate --tool claude|codex|cursor [--repo DIR] [--slug NAME] [--base REF]
-#                       [--max-turns N] [--budget-usd X] [--timeout-min M] <ticket text | @file>
+#                       [--max-turns N] [--budget-usd X] [--timeout-min M]
+#                       [--no-sandbox] [--allow-domain HOST]... [--allow-write PATH]...
+#                       <ticket text | @file>
+#   ai-delegate --tool ... --spec SPEC.md --task ID --base PARENT-BRANCH [notes]
 #   ai-delegate --remove --repo DIR --slug NAME
 #
 # The worktree is created from the repo in --repo (default: the current directory), beside that repo
-# (<repo>.worktrees/<slug>, or $AI_WORKTREES_DIR), on a new branch named <github-login>/<slug>, recorded as the agent's. Nothing is pushed and no PR is
-# opened: the run leaves a worktree for you to review, and prints a JSON summary.
+# (<repo>.worktrees/<slug>, or $AI_WORKTREES_DIR), on a new branch named <github-login>/<slug>,
+# recorded as the agent's. It prints a JSON summary and leaves the worktree for review.
+#
+# Two modes:
+#   whole task   the tool runs the tech-lead skill and, when checks pass and the audit is clean,
+#                ends by opening a draft PR through open-draft-pr.
+#   --task ID    one task of a spec a tech lead already wrote (--spec), for parallel work. The tool
+#                runs the deliver skill on that task only, commits, and pushes nothing: the tech lead
+#                merges the branch into its own and opens the one PR.
 #
 # Commits are checked by a commit-msg hook scoped to the run (see below), in any tool.
 #
@@ -17,6 +27,12 @@
 # neither flag, so the wrapper enforces --timeout-min with perl's alarm (macOS has no `timeout`).
 # Cursor needs its `agent` CLI (see cursor.com/docs/cli) and CURSOR_API_KEY or a login; its flags
 # follow Cursor's docs and are untested against a real install on this machine.
+#
+# Sandbox: Claude Code runs with an OS sandbox from a per-run --settings file. Bash may write only
+# inside the worktree, the repo's git directory, the ai-essentials state directory and the
+# --allow-write paths, and reach only the --allow-domain hosts (GitHub and the npm registry by
+# default). gh and git network commands run outside it, still behind the guard hook. --no-sandbox
+# turns it off. Codex and Cursor use their own sandbox flags (below).
 #
 # Test seam: AI_ESSENTIALS_TOOL_CMD replaces the tool invocation with any command, run inside
 # the worktree with the prompt in $AI_ESSENTIALS_PROMPT. Its stdout goes to stderr, so the JSON summary
@@ -38,6 +54,7 @@ VERIFY_CLI=(node "$REPO_HOME/scripts/verify/cli.mjs")
 AUDIT=(node "$REPO_HOME/scripts/guard/audit_branch.mjs")
 
 TOOL="" REPO="$PWD" SLUG="" BASE="" MAX_TURNS=40 BUDGET_USD=10 TIMEOUT_MIN=45 TIMEOUT_SEC="" REMOVE=false TICKET=""
+SPEC="" TASK="" SANDBOX=true SANDBOX_FLAGS=()
 
 die() { printf 'delegate: %s\n' "$*" >&2; exit 1; }
 
@@ -51,8 +68,12 @@ while [[ $# -gt 0 ]]; do
     --budget-usd) BUDGET_USD="$2"; shift 2 ;;
     --timeout-min) TIMEOUT_MIN="$2"; shift 2 ;;
     --timeout-sec) TIMEOUT_SEC="$2"; shift 2 ;;
+    --spec) SPEC="$2"; shift 2 ;;
+    --task) TASK="$2"; shift 2 ;;
+    --no-sandbox) SANDBOX=false; shift ;;
+    --allow-domain|--allow-write) SANDBOX_FLAGS+=("$1" "$2"); shift 2 ;;
     --remove) REMOVE=true; shift ;;
-    -h|--help) sed -n '2,19p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    -h|--help) sed -n '2,37p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) TICKET="$1"; shift ;;
   esac
 done
@@ -77,7 +98,14 @@ if [[ "$REMOVE" == true ]]; then
 fi
 
 [[ -n "$TOOL" || -n "${AI_ESSENTIALS_TOOL_CMD:-}" ]] || die "--tool claude|codex|cursor is required"
-[[ -n "$TICKET" ]] || die "a task (text or @file) is required"
+if [[ -n "$TASK" ]]; then
+  [[ -n "$SPEC" && -f "$SPEC" ]] || die "--task needs --spec pointing at the tech lead's SPEC.md"
+  [[ -n "$BASE" ]] || die "--task needs --base: the tech lead's branch, which this task's branch merges back into"
+  SPEC="$(cd "$(dirname "$SPEC")" && pwd)/$(basename "$SPEC")"
+  [[ -n "$SLUG" ]] || SLUG="task-$TASK"
+else
+  [[ -n "$TICKET" ]] || die "a task (text or @file) is required"
+fi
 [[ "$TICKET" == @* ]] && TICKET="$(cat "${TICKET#@}")"
 [[ -n "$SLUG" ]] || SLUG="$(printf '%s' "$TICKET" | head -1 | cut -c1-60)"
 SLUG="$(slugify "$SLUG")"
@@ -87,6 +115,10 @@ LOGIN="$("${WORK_CLI[@]}" login 2>/dev/null || true)"
 BRANCH="${LOGIN:+$LOGIN/}$SLUG"
 WORKTREE="$WORKTREES/$SLUG"
 BASE="${BASE:-$(git -C "$ROOT" rev-parse --abbrev-ref HEAD)}"
+# On a detached HEAD the name is the literal "HEAD", which after the run means the agent's own tip:
+# the audit would cover HEAD..HEAD and pass with nothing checked. Pin the commit instead.
+[[ "$BASE" != HEAD ]] || BASE="$(git -C "$ROOT" rev-parse HEAD)"
+BASE_SHA="$(git -C "$ROOT" rev-parse --verify --quiet "$BASE^{commit}")" || die "--base $BASE does not resolve to a commit"
 [[ ! -e "$WORKTREE" ]] || die "$WORKTREE already exists; remove it or pick another --slug"
 mkdir -p "$WORKTREES"
 
@@ -133,16 +165,37 @@ chmod +x "$RUN_HOOKS/commit-msg"
 }
 
 SPEC_DIR="$("${WORK_CLI[@]}" spec-dir --cwd "$WORKTREE")"
-PROMPT="Use the tech-lead skill on the task below.
+if [[ -n "$TASK" ]]; then
+  PROMPT="Use the deliver skill on task $TASK of the spec at $SPEC.
+
+You are running non-interactively in a git worktree on branch $BRANCH, created for this one task by a tech lead working elsewhere. Do not create another branch. Nobody can answer questions while you run:
+- implement task $TASK only, touching only the files it names; every other task has its own run;
+- decide everything a rule or an approved precedent settles;
+- if a decision falls in an always-ask class and the spec does not answer it, write the question with your recommended answer to $SPEC_DIR/questions.md and stop;
+- commit on this branch once the verification contract passes. Do not push and do not open a pull request: the tech lead merges this branch into its own and opens the one PR.${TICKET:+
+
+Notes from the tech lead:
+$TICKET}"
+else
+  # Claude starts the skill as a slash command: tech-lead is not model-invocable, so a request to
+  # "use" it would be declined. The other tools read the instruction.
+  if [[ "$TOOL" == claude ]]; then LEAD="/tech-lead"; else LEAD="Use the tech-lead skill on the task below."; fi
+  PROMPT="$LEAD
 
 You are running non-interactively in a git worktree on branch $BRANCH, which already exists and is recorded as yours. Do not create another branch. Nobody can answer questions while you run:
-- decide everything a rule or an approved precedent settles, and record each decision in $SPEC_DIR/decisions-made.md;
+- decide everything a rule or an approved precedent settles;
 - if a decision falls in an always-ask class (see the tech-lead skill) and no answer is given below, write the question with your recommended answer to $SPEC_DIR/questions.md and stop;
 - skip the plan gate, but write the task breakdown to $SPEC_DIR/SPEC.md first;
 - finish by running open-draft-pr only if the verification contract passes and the branch audit is clean; otherwise stop and report.
 
 Task (a ticket, or just a description; do not ask for a ticket):
 $TICKET"
+fi
+
+# Claude's sandbox for this run only, layered over the user's settings with --settings.
+RUN_SETTINGS="$STATE/run-settings/$REPO_NAME-$SLUG.json"
+node "$REPO_HOME/scripts/work/sandbox_settings.mjs" --out "$RUN_SETTINGS" --git-dir "$COMMON_DIR" --state "$STATE" \
+  ${SANDBOX_FLAGS[@]+"${SANDBOX_FLAGS[@]}"}
 
 TIMEOUT_SEC="${TIMEOUT_SEC:-$((TIMEOUT_MIN * 60))}"
 EXIT=0
@@ -152,8 +205,10 @@ pushd "$WORKTREE" >/dev/null
 if [[ -n "${AI_ESSENTIALS_TOOL_CMD:-}" ]]; then
   AI_ESSENTIALS_PROMPT="$PROMPT" perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SEC" bash -c "$AI_ESSENTIALS_TOOL_CMD" >&2 || EXIT=$?
 elif [[ "$TOOL" == claude ]]; then
-  claude -p "$PROMPT" --permission-mode auto --max-turns "$MAX_TURNS" --max-budget-usd "$BUDGET_USD" \
-    --output-format json </dev/null > "$SPEC_DIR/run.json" 2> "$SPEC_DIR/run.err" || EXIT=$?
+  # stream-json keeps every step, so a failed run can be read as a trace and not only as a result.
+  CLAUDE_ARGS=(-p "$PROMPT" --permission-mode auto --max-turns "$MAX_TURNS" --max-budget-usd "$BUDGET_USD" --output-format stream-json --verbose)
+  [[ "$SANDBOX" == true ]] && CLAUDE_ARGS+=(--settings "$RUN_SETTINGS")
+  claude "${CLAUDE_ARGS[@]}" </dev/null > "$SPEC_DIR/run.jsonl" 2> "$SPEC_DIR/run.err" || EXIT=$?
 elif [[ "$TOOL" == codex ]]; then
   perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SEC" \
     codex exec --approve-for-me -C "$WORKTREE" "$PROMPT" \
@@ -170,16 +225,25 @@ popd >/dev/null
 unset GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
 SECONDS_TAKEN=$(( $(date +%s) - START ))
 
-AUDIT_OUT="$("${AUDIT[@]}" --cwd "$WORKTREE" --base "$BASE" 2>&1)" && AUDIT_OK=true || AUDIT_OK=false
+AUDIT_OUT="$("${AUDIT[@]}" --cwd "$WORKTREE" --base "$BASE_SHA" 2>&1)" && AUDIT_OK=true || AUDIT_OK=false
 VERIFY_OUT="$("${VERIFY_CLI[@]}" --cwd "$WORKTREE" 2>&1)" && VERIFY_OK=true || VERIFY_OK=false
-COMMITS="$(git -C "$WORKTREE" rev-list --count "$BASE..HEAD")"
+COMMITS="$(git -C "$WORKTREE" rev-list --count "$BASE_SHA..HEAD")"
 
 node -e '
-const [, branch, worktree, specDir, exit, seconds, commits, auditOk, audit, verifyOk, verify] = process.argv;
+const fs = require("fs");
+const [, branch, worktree, specDir, exit, seconds, commits, auditOk, audit, verifyOk, verify, task] = process.argv;
+// Claude ends its stream with one "result" event carrying cost and turns; other tools report neither.
+const stream = specDir + "/run.jsonl";
+const result = fs.existsSync(stream)
+  ? fs.readFileSync(stream, "utf8").split("\n").flatMap((line) => {
+      try { const event = JSON.parse(line); return event.type === "result" ? [event] : []; } catch (error) { return []; }
+    }).pop()
+  : undefined;
 console.log(JSON.stringify({
-  branch, worktree, specDir, toolExit: Number(exit), seconds: Number(seconds), commits: Number(commits),
+  branch, worktree, specDir, task: task || null, toolExit: Number(exit), seconds: Number(seconds), commits: Number(commits),
+  costUsd: result?.total_cost_usd ?? null, turns: result?.num_turns ?? null,
   audit: { ok: auditOk === "true", output: audit },
   verify: { ok: verifyOk === "true", output: verify.slice(0, 800) },
-  questions: require("fs").existsSync(specDir + "/questions.md"),
+  questions: fs.existsSync(specDir + "/questions.md"),
 }, null, 2));
-' "$BRANCH" "$WORKTREE" "$SPEC_DIR" "$EXIT" "$SECONDS_TAKEN" "$COMMITS" "$AUDIT_OK" "$AUDIT_OUT" "$VERIFY_OK" "$VERIFY_OUT"
+' "$BRANCH" "$WORKTREE" "$SPEC_DIR" "$EXIT" "$SECONDS_TAKEN" "$COMMITS" "$AUDIT_OK" "$AUDIT_OUT" "$VERIFY_OK" "$VERIFY_OUT" "$TASK"

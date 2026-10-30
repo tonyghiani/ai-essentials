@@ -5,9 +5,9 @@ Installed as `~/.codex/AGENTS.md`. Edits are picked up by new Codex sessions.
 ## Rules, skills and agents
 
 Behaviour and style rules are installed as files in `~/.codex/guidance/` (or `$CODEX_HOME/guidance/`).
-Always apply `no-ai-prose.mdc`, `numbered-replies.mdc`, `no-ai-attribution.mdc`,
-`verification-evidence.mdc` and `test-value.mdc` from there. Their core guidance is included below.
-Read the matching rule file before editing:
+The always-on rules (`no-ai-prose.mdc`, `numbered-replies.mdc`, `no-ai-attribution.mdc`,
+`verification-evidence.mdc`, `test-value.mdc`) are summarised below; that summary is what applies,
+so open those files only when you need a detail it leaves out. Read the matching rule file before editing:
 
 | Editing | Rule file |
 |---------|-----------|
@@ -47,7 +47,7 @@ Applies to **everything you emit as text**: chat replies, markdown, code comment
 - No stacked parentheticals: `foo (a thing) (used everywhere)`. Pick one, inline it.
 
 **Banned words and phrases**
-`leverage`, `utilize`, `delve`, `harness` (as a verb), `unlock`, `streamline`, `robust`, `comprehensive`, `seamless`, `powerful`, `cutting-edge`, `state-of-the-art`, `world-class`, `In conclusion`, `In summary`, `It's worth noting that`, `It goes without saying`, `Moreover`, `Furthermore`, `Additionally`, `dive deep`, `take it to the next level`, `elevate your skills`, `In this article we will explore`, `As an AI`. No `So,` / `Now,` as filler openers.
+`leverage`, `utilize`, `delve`, `harness` (as a verb), `unlock`, `streamline`, `robust`, `comprehensive`, `seamless`, `powerful`, `cutting-edge`, `state-of-the-art`, `world-class`, `In conclusion`, `In summary`, `It's worth noting that`, `It goes without saying`, `Moreover`, `Furthermore`, `Additionally`, `dive deep`, `take it to the next level`, `elevate your skills`, `In this article we will explore`, `This article covers`, `As an AI`, `As a developer at`. No `So,` / `Now,` as filler openers.
 
 **Banned structural moves**
 - Restating the previous paragraph. Move forward.

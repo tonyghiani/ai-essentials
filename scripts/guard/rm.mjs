@@ -18,13 +18,18 @@ import { realpathSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { repoRoot } from '../lib/repo.mjs';
+import { programOf, shellWords, splitSegments } from '../lib/shell.mjs';
 
-const SEPARATORS = /&&|\|\||;|\||\n/;
 const RECURSIVE_FLAG = /^-[a-zA-Z]*[rR][a-zA-Z]*$|^--recursive$/;
-const UNRESOLVABLE = /[`$]|\*\*/;
+/** Variables, substitutions, `**`, brace expansion and `~user` all expand to paths this check cannot see. */
+const UNRESOLVABLE = /[`${}]|\*\*|^~[^/]/;
 
-/** Scratch locations a task may clean up freely. */
-const SCRATCH_ROOTS = [tmpdir(), '/tmp', '/private/tmp', '/var/folders', '/private/var/folders'];
+/**
+ * Scratch locations a task may clean up below, never the location itself. The
+ * per-user temp directory is covered through tmpdir(); its parent under
+ * /var/folders holds other sessions' files and is not scratch.
+ */
+const SCRATCH_ROOTS = [tmpdir(), '/tmp', '/private/tmp'];
 
 /**
  * Resolve symlinks through the nearest part of the path that exists, so a path
@@ -57,8 +62,7 @@ function isInside(path, parent) {
  * @param {string} rawToken
  * @returns {string} The token without surrounding quotes, with a leading ~ or $HOME expanded.
  */
-function expandHome(rawToken) {
-  const token = rawToken.replace(/^["']|["']$/g, '');
+function expandHome(token) {
   if (token === '~' || token.startsWith(`~${sep}`)) {
     return join(homedir(), token.slice(1));
   }
@@ -74,22 +78,24 @@ function expandHome(rawToken) {
  * @returns {IVerdict}
  */
 export function checkRecursiveDelete(command, cwd) {
-  const boundary = real(repoRoot(cwd) ?? cwd);
+  const root = repoRoot(cwd);
+  const boundary = real(root ?? cwd);
+  const home = real(homedir());
+  // Outside a repository the boundary is the working directory, which from the home directory (or
+  // above it) would cover everything the user owns.
+  const boundaryTooWide = root === null && (boundary === home || isInside(home, boundary));
   const scratchRoots = SCRATCH_ROOTS.map(real);
   // Scratch space is free to clean up only for a repo that lives elsewhere. A repo that is itself
   // under a temp directory (an eval worktree, a test fixture) must not be able to delete its siblings.
-  const repoIsScratch = scratchRoots.some((root) => boundary === root || isInside(boundary, root));
+  const repoIsScratch = scratchRoots.some((scratchRoot) => boundary === scratchRoot || isInside(boundary, scratchRoot));
   const scratch = repoIsScratch ? [] : scratchRoots;
 
-  for (const segment of command.split(SEPARATORS)) {
-    const tokens = segment.trim().split(/\s+/).filter(Boolean);
-    while (tokens.length > 0 && (/^\w+=/.test(tokens[0]) || tokens[0] === 'sudo' || tokens[0] === 'command')) {
-      tokens.shift();
-    }
-    if (tokens[0] !== 'rm' || !tokens.slice(1).some((token) => RECURSIVE_FLAG.test(token))) {
+  for (const segment of splitSegments(command)) {
+    const { program, args } = programOf(shellWords(segment));
+    if (program !== 'rm' || !args.some((arg) => RECURSIVE_FLAG.test(arg))) {
       continue;
     }
-    const paths = tokens.slice(1).filter((token) => !token.startsWith('-'));
+    const paths = args.filter((arg) => !arg.startsWith('-'));
     for (const rawPath of paths) {
       const path = expandHome(rawPath);
       if (UNRESOLVABLE.test(path)) {
@@ -100,11 +106,10 @@ export function checkRecursiveDelete(command, cwd) {
         };
       }
       const absolute = real(resolve(cwd, path));
-      const insideScratch = scratch.some((root) => absolute === root || isInside(absolute, root));
-      if (insideScratch && absolute !== real(tmpdir())) {
+      if (scratch.some((scratchRoot) => isInside(absolute, scratchRoot))) {
         continue;
       }
-      if (!isInside(absolute, boundary)) {
+      if (boundaryTooWide || !isInside(absolute, boundary)) {
         return {
           allow: false,
           rule: 'rm-outside-repo',
