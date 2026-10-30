@@ -14,6 +14,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { git, repoKey, repoRoot } from '../lib/repo.mjs';
 import { readJson, stateDir, updateJson } from '../lib/state.mjs';
+import { resetLedger } from './tasks.mjs';
 
 const BRANCHES_FILE = 'branches.json';
 const SLUG_MAX_CHARS = 40;
@@ -134,5 +135,8 @@ export function createBranch({ cwd, slug, prefix }) {
     return { ok: false, reason: 'git-failed', detail: `git checkout -b ${branch} failed` };
   }
   registerBranch(root, branch, base);
-  return { ok: true, branch, base, specDir: specDir(root, branch) };
+  const dir = specDir(root, branch);
+  // The name may belong to a branch deleted earlier, whose ledger and questions would otherwise carry over.
+  resetLedger(dir);
+  return { ok: true, branch, base, specDir: dir };
 }

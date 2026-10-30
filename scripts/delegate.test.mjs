@@ -290,7 +290,7 @@ describe('tool invocation', () => {
     assert.deepEqual(args.slice(args.indexOf('--max-budget-usd'), args.indexOf('--max-budget-usd') + 2), ['--max-budget-usd', '2']);
   });
 
-  it('starts Claude Code inside a sandbox that can still commit in the worktree', () => {
+  it('starts Claude Code inside a sandbox that can still commit in the worktree, with a separate done-when evaluator', () => {
     const fake = fakeClis(['claude']);
     const result = run(DELEGATE, ['--repo', ctx.repo, '--tool', 'claude', '--slug', 'sb', 'Task'], fake.env);
     assert.equal(result.status, 0, result.stderr);
@@ -299,6 +299,18 @@ describe('tool invocation', () => {
     assert.equal(settings.sandbox.enabled, true);
     assert.equal(settings.sandbox.failIfUnavailable, true);
     assert.equal(settings.sandbox.filesystem.allowWrite.includes(realpathSync(join(ctx.repo, '.git'))), true);
+    const [evaluator] = settings.hooks.Stop[0].hooks;
+    assert.equal(evaluator.type, 'prompt');
+    assert.match(evaluator.prompt, /draft pull request URL/);
+  });
+
+  it('keeps the done-when evaluator when the sandbox is turned off', () => {
+    const fake = fakeClis(['claude']);
+    run(DELEGATE, ['--repo', ctx.repo, '--tool', 'claude', '--slug', 'nosb', '--no-sandbox', 'Task'], fake.env);
+    const args = fake.argsOf('claude');
+    const settings = JSON.parse(readFileSync(args[args.indexOf('--settings') + 1], 'utf8'));
+    assert.equal(settings.sandbox, undefined);
+    assert.equal(settings.hooks.Stop[0].hooks[0].type, 'prompt');
   });
 
   it('reports the cost and turns Claude Code ends its stream with', () => {

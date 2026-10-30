@@ -16,10 +16,13 @@
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { dirname } from 'node:path';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { matchesAny } from '../lib/glob.mjs';
 import { changedFiles, repoKey, repoRoot } from '../lib/repo.mjs';
 import { appendJsonl, updateJson } from '../lib/state.mjs';
+import { currentBranch, isAgentBranch, specDir } from '../work/branches.mjs';
+import { ledgerEnforced, ledgerGaps } from '../work/tasks.mjs';
 import { resolveContract } from './contract.mjs';
 
 /** Identical failures in a row before the agent is told to stop retrying. */
@@ -169,6 +172,75 @@ function clearFailures(sessionId) {
 }
 
 /**
+ * @param {string} root
+ * @returns {{ status: 'ran', failures: IFailure[] } | { status: 'skipped', message: string }}
+ */
+function runContractChecks(root) {
+  const resolved = resolveContract(root);
+  if (resolved.status === 'none') {
+    return { status: 'skipped', message: 'no verification contract for this repo' };
+  }
+  if (resolved.status === 'untrusted') {
+    return { status: 'skipped', message: `${resolved.path} is not trusted; review it, then run: ai-verify --trust` };
+  }
+  if (resolved.status === 'invalid') {
+    return { status: 'ran', failures: [{ name: 'contract', detail: `${resolved.path}: ${resolved.reason}` }] };
+  }
+  const changed = changedFiles(root);
+  if (changed.length === 0) {
+    return { status: 'skipped', message: 'no changed files' };
+  }
+  // A loop, not flatMap: each check's timeout depends on the time the earlier ones used.
+  const startedAt = Date.now();
+  const failures = [];
+  for (const check of resolved.contract.checks) {
+    const remainingSec = VERIFY_BUDGET_SEC - (Date.now() - startedAt) / 1_000;
+    const failure = runCheck(check, { root, changed, remainingSec });
+    if (failure !== null) {
+      failures.push(failure);
+    }
+  }
+  return { status: 'ran', failures };
+}
+
+/**
+ * In an unattended run, the ledger must be written and every task in it shown
+ * to pass, unless the run stopped to ask: a question for the user is a
+ * legitimate way to end one. Interactive sessions are never held to it.
+ *
+ * @param {string} root
+ * @returns {IFailure | null}
+ */
+function ledgerFailure(root) {
+  if (!ledgerEnforced()) {
+    return null;
+  }
+  const branch = currentBranch(root);
+  // Only agent branches have a ledger; checking first also keeps specDir from creating a spec
+  // directory for every branch of every repo a session stops in.
+  if (branch === null || !isAgentBranch(root, branch)) {
+    return null;
+  }
+  const dir = specDir(root, branch);
+  if (existsSync(join(dir, 'questions.md'))) {
+    return null;
+  }
+  const { empty, open } = ledgerGaps(dir);
+  const askHint = `If something needs the user, write the question to ${join(dir, 'questions.md')} and stop.`;
+  if (empty) {
+    return { name: 'tasks', detail: `the task ledger is empty. Add the spec's tasks with: ai-work task add <id> "<title>", and mark each once shown to work. ${askHint}` };
+  }
+  if (open.length === 0) {
+    return null;
+  }
+  const list = open.map((task) => `${task.id} ${task.title}`).join('; ');
+  return {
+    name: 'tasks',
+    detail: `not shown to pass yet: ${list}. Verify each, then record it with: ai-work task pass <id> --evidence "<command and what it showed>". ${askHint}`,
+  };
+}
+
+/**
  * @param {IFailure[]} failures
  * @returns {string}
  */
@@ -187,41 +259,17 @@ export function runVerify({ cwd, sessionId = 'default' }) {
     return { status: 'skipped', message: 'not inside a git repository', failures: [] };
   }
 
-  const resolved = resolveContract(root);
-  if (resolved.status === 'none') {
-    return { status: 'skipped', message: 'no verification contract for this repo', failures: [] };
-  }
-  if (resolved.status === 'untrusted') {
-    return {
-      status: 'skipped',
-      message: `${resolved.path} is not trusted; review it, then run: ai-verify --trust`,
-      failures: [],
-    };
-  }
-  if (resolved.status === 'invalid') {
-    const failure = { name: 'contract', detail: `${resolved.path}: ${resolved.reason}` };
-    return { status: 'fail', message: formatFailures([failure]), failures: [failure] };
-  }
-
-  const changed = changedFiles(root);
-  if (changed.length === 0) {
-    return { status: 'skipped', message: 'no changed files', failures: [] };
-  }
-
-  // A loop, not flatMap: each check's timeout depends on the time the earlier ones used.
-  const startedAt = Date.now();
-  const failures = [];
-  for (const check of resolved.contract.checks) {
-    const remainingSec = VERIFY_BUDGET_SEC - (Date.now() - startedAt) / 1_000;
-    const failure = runCheck(check, { root, changed, remainingSec });
-    if (failure !== null) {
-      failures.push(failure);
-    }
-  }
+  const checked = runContractChecks(root);
+  // The ledger is checked even when there is no contract or nothing changed: an unattended run that
+  // stops with tasks still open has not finished, whatever the checks say.
+  const ledger = ledgerFailure(root);
+  const failures = [...(checked.status === 'ran' ? checked.failures : []), ...(ledger === null ? [] : [ledger])];
 
   if (failures.length === 0) {
     clearFailures(sessionId);
-    return { status: 'pass', message: 'all checks passed', failures: [] };
+    return checked.status === 'ran'
+      ? { status: 'pass', message: 'all checks passed', failures: [] }
+      : { status: 'skipped', message: checked.message, failures: [] };
   }
 
   const { identical, blocks } = recordFailure(sessionId, failures);

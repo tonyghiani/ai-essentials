@@ -34,6 +34,11 @@
 # default). gh and git network commands run outside it, still behind the guard hook. --no-sandbox
 # turns it off. Codex and Cursor use their own sandbox flags (below).
 #
+# Done means done: the same settings file adds a prompt-based Stop hook (what /goal is built on), so
+# a separate model lets the run stop only on shown evidence, and AI_ESSENTIALS_ENFORCE_LEDGER makes the
+# Stop gate refuse to end the run while the branch's task ledger (`ai-work task`) is empty or has a task
+# open. The variable lives only in this run's environment, so later interactive sessions are not held.
+#
 # Test seam: AI_ESSENTIALS_TOOL_CMD replaces the tool invocation with any command, run inside
 # the worktree with the prompt in $AI_ESSENTIALS_PROMPT. Its stdout goes to stderr, so the JSON summary
 # on stdout stays the only thing this script prints.
@@ -172,6 +177,7 @@ You are running non-interactively in a git worktree on branch $BRANCH, created f
 - implement task $TASK only, touching only the files it names; every other task has its own run;
 - decide everything a rule or an approved precedent settles;
 - if a decision falls in an always-ask class and the spec does not answer it, write the question with your recommended answer to $SPEC_DIR/questions.md and stop;
+- task $TASK is already in the branch's ledger: mark it only after you have shown it works (ai-work task pass $TASK --evidence \"<command and what it showed>\"); the run cannot finish while it is open;
 - commit on this branch once the verification contract passes. Do not push and do not open a pull request: the tech lead merges this branch into its own and opens the one PR.${TICKET:+
 
 Notes from the tech lead:
@@ -185,7 +191,7 @@ else
 You are running non-interactively in a git worktree on branch $BRANCH, which already exists and is recorded as yours. Do not create another branch. Nobody can answer questions while you run:
 - decide everything a rule or an approved precedent settles;
 - if a decision falls in an always-ask class (see the tech-lead skill) and no answer is given below, write the question with your recommended answer to $SPEC_DIR/questions.md and stop;
-- skip the plan gate, but write the task breakdown to $SPEC_DIR/SPEC.md first;
+- skip the plan gate, but write the task breakdown to $SPEC_DIR/SPEC.md first, and add each task to the ledger (ai-work task add <id> \"<title>\"); mark one only after you have shown it works (ai-work task pass <id> --evidence \"<command and what it showed>\"); the run cannot finish while any is open;
 - finish by running open-draft-pr only if the verification contract passes and the branch audit is clean; otherwise stop and report.
 
 Task (a ticket, or just a description; do not ask for a ticket):
@@ -193,21 +199,31 @@ $TICKET"
 fi
 
 # Claude's sandbox for this run only, layered over the user's settings with --settings.
+# It also carries the done-when evaluator (the mechanism behind /goal): a separate model decides
+# whether the run may stop, so the agent that did the work does not grade it.
 RUN_SETTINGS="$STATE/run-settings/$REPO_NAME-$SLUG.json"
+[[ "$SANDBOX" == true ]] || SANDBOX_FLAGS+=(--no-sandbox)
 node "$REPO_HOME/scripts/work/sandbox_settings.mjs" --out "$RUN_SETTINGS" --git-dir "$COMMON_DIR" --state "$STATE" \
-  ${SANDBOX_FLAGS[@]+"${SANDBOX_FLAGS[@]}"}
+  --done-when "$([[ -n "$TASK" ]] && echo task || echo whole)" ${SANDBOX_FLAGS[@]+"${SANDBOX_FLAGS[@]}"}
+# A branch name, and so its spec directory, can come back after a deleted branch: start the ledger
+# clean. In --task mode the task is known, so it is registered here rather than left to the agent.
+node -e 'import(process.argv[1]).then((m) => m.resetLedger(process.argv[2]))' "$REPO_HOME/scripts/work/tasks.mjs" "$SPEC_DIR"
+if [[ -n "$TASK" ]]; then
+  "${WORK_CLI[@]}" task add "$TASK" "task $TASK of $(basename "$SPEC")" --cwd "$WORKTREE" >/dev/null
+fi
 
 TIMEOUT_SEC="${TIMEOUT_SEC:-$((TIMEOUT_MIN * 60))}"
 EXIT=0
 START="$(date +%s)"
 export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0="$RUN_HOOKS"
+# The tool's hooks inherit this, so the Stop gate holds this run, and only this run, to its task ledger.
+export AI_ESSENTIALS_ENFORCE_LEDGER=1
 pushd "$WORKTREE" >/dev/null
 if [[ -n "${AI_ESSENTIALS_TOOL_CMD:-}" ]]; then
   AI_ESSENTIALS_PROMPT="$PROMPT" perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SEC" bash -c "$AI_ESSENTIALS_TOOL_CMD" >&2 || EXIT=$?
 elif [[ "$TOOL" == claude ]]; then
   # stream-json keeps every step, so a failed run can be read as a trace and not only as a result.
-  CLAUDE_ARGS=(-p "$PROMPT" --permission-mode auto --max-turns "$MAX_TURNS" --max-budget-usd "$BUDGET_USD" --output-format stream-json --verbose)
-  [[ "$SANDBOX" == true ]] && CLAUDE_ARGS+=(--settings "$RUN_SETTINGS")
+  CLAUDE_ARGS=(-p "$PROMPT" --permission-mode auto --max-turns "$MAX_TURNS" --max-budget-usd "$BUDGET_USD" --output-format stream-json --verbose --settings "$RUN_SETTINGS")
   claude "${CLAUDE_ARGS[@]}" </dev/null > "$SPEC_DIR/run.jsonl" 2> "$SPEC_DIR/run.err" || EXIT=$?
 elif [[ "$TOOL" == codex ]]; then
   perl -e 'alarm shift; exec @ARGV' "$TIMEOUT_SEC" \
@@ -222,7 +238,7 @@ else
   popd >/dev/null; die "unknown tool: $TOOL"
 fi
 popd >/dev/null
-unset GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
+unset GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0 AI_ESSENTIALS_ENFORCE_LEDGER
 SECONDS_TAKEN=$(( $(date +%s) - START ))
 
 AUDIT_OUT="$("${AUDIT[@]}" --cwd "$WORKTREE" --base "$BASE_SHA" 2>&1)" && AUDIT_OK=true || AUDIT_OK=false

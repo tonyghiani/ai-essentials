@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { keyToFileName, repoKey, repoRoot } from '../lib/repo.mjs';
 import { trustContract } from './contract.mjs';
 import { formatFile } from './format_file.mjs';
+import { registerBranch, specDir } from '../work/branches.mjs';
+import { addTask, passTask } from '../work/tasks.mjs';
 import { MAX_CONSECUTIVE_BLOCKS, MAX_IDENTICAL_FAILURES, runVerify } from './run.mjs';
 
 const REPO_HOME = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -188,6 +190,33 @@ describe('runVerify', () => {
     const result = runVerify({ cwd: ctx.repo });
     assert.equal(result.status, 'fail');
     assert.match(result.message, /timeoutSec/);
+  });
+
+  it('holds an unattended run on an agent branch until every task passes, unless it stopped with a question', () => {
+    git(ctx.repo, ['checkout', '-q', '-b', 'octocat/ledger']);
+    registerBranch(repoRoot(ctx.repo), 'octocat/ledger', 'main');
+    const dir = specDir(repoRoot(ctx.repo), 'octocat/ledger');
+    addTask(dir, { id: 'T1', title: 'add the thing' });
+
+    // An interactive session on the same branch is never held to the ledger.
+    assert.equal(runVerify({ cwd: ctx.repo, sessionId: 'ledger' }).status, 'skipped');
+
+    process.env.AI_ESSENTIALS_ENFORCE_LEDGER = '1';
+    try {
+      const blocked = runVerify({ cwd: ctx.repo, sessionId: 'ledger' });
+      assert.equal(blocked.status, 'fail');
+      assert.match(blocked.message, /T1 add the thing/);
+
+      writeFileSync(join(dir, 'questions.md'), '1. Which API? Recommended: v2\n');
+      assert.equal(runVerify({ cwd: ctx.repo, sessionId: 'ledger' }).status, 'skipped');
+      rmSync(join(dir, 'questions.md'));
+
+      assert.equal(passTask(dir, { id: 'T1', evidence: 'ok' }).ok, false);
+      passTask(dir, { id: 'T1', evidence: 'node --test a.test.mjs: 3 pass, 0 fail' });
+      assert.equal(runVerify({ cwd: ctx.repo, sessionId: 'ledger' }).status, 'skipped');
+    } finally {
+      delete process.env.AI_ESSENTIALS_ENFORCE_LEDGER;
+    }
   });
 
   it('restarts the failure count after a passing run', () => {

@@ -8,8 +8,11 @@
  *   spec-dir [--cwd <dir>]                       print the state dir for the current branch
  *   diff [--base <ref>] [--cwd <dir>]            write the change as a patch, print its path
  *   register <branch> [--base <ref>] [--cwd <dir>]  record an existing branch (a worktree branch) as yours
- *   logs <corrections|failures|errors> [--archive]  print a machine-local log; --archive renames it after reading
+ *   logs <corrections|failures|errors|lessons> [--archive]  print a machine-local log; --archive renames it after reading
  *   login                                        print the GitHub login used as branch prefix
+ *   lesson --source <s> --route <r> --text <t> [--ref <url>]  record a lesson from a review comment or a failure
+ *   task add <id> <title> | task pass <id> --evidence <text> | task list
+ *                                                the branch's task ledger (see tasks.mjs)
  *
  * All output is JSON or a bare path so a skill can parse it.
  */
@@ -18,8 +21,12 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { defaultBase, git, repoRoot } from '../lib/repo.mjs';
-import { statePath } from '../lib/state.mjs';
+import { appendJsonl, statePath } from '../lib/state.mjs';
 import { createBranch, currentBranch, isAgentBranch, registerBranch, specDir } from './branches.mjs';
+import { addTask, passTask, readLedger } from './tasks.mjs';
+
+/** Where a lesson should end up; the memory-distill skill applies the routing. */
+const LESSON_ROUTES = ['claude-md', 'path-rule', 'lint-rule', 'hook', 'skill-gotcha', 'eval', 'memory'];
 
 const GH_TIMEOUT_MS = 5_000;
 const [command, ...rest] = process.argv.slice(2);
@@ -112,10 +119,10 @@ switch (command) {
     break;
   }
   case 'logs': {
-    const files = { corrections: 'corrections.jsonl', failures: 'verify-failures.jsonl', errors: 'hook-errors.jsonl' };
+    const files = { corrections: 'corrections.jsonl', failures: 'verify-failures.jsonl', errors: 'hook-errors.jsonl', lessons: 'lessons.jsonl' };
     const name = rest.find((arg) => !arg.startsWith('--'));
     if (name === undefined || !(name in files)) {
-      fail('usage: logs <corrections|failures|errors> [--archive]');
+      fail('usage: logs <corrections|failures|errors|lessons> [--archive]');
     }
     const path = statePath(files[name]);
     if (existsSync(path)) {
@@ -130,6 +137,35 @@ switch (command) {
     process.stdout.write(`${githubLogin() ?? ''}\n`);
     break;
   }
+  case 'lesson': {
+    const [source, route, text] = [flagValue('--source'), flagValue('--route'), flagValue('--text')];
+    if (source === undefined || route === undefined || text === undefined || !LESSON_ROUTES.includes(route)) {
+      fail(`usage: lesson --source <s> --route <${LESSON_ROUTES.join('|')}> --text <t> [--ref <url>]`);
+    }
+    appendJsonl('lessons.jsonl', { at: new Date().toISOString(), source, route, text, ref: flagValue('--ref') ?? null });
+    process.stdout.write('recorded\n');
+    break;
+  }
+  case 'task': {
+    const branch = root === null ? null : currentBranch(root);
+    if (root === null || branch === null) {
+      fail('not on a branch inside a git repository');
+    }
+    const dir = specDir(root, branch);
+    const [action, id, ...words] = rest.filter((arg, index, all) => !arg.startsWith('--') && !['--cwd', '--evidence'].includes(all[index - 1]));
+    if (action === 'add' && id !== undefined && words.length > 0) {
+      addTask(dir, { id, title: words.join(' ') });
+    } else if (action === 'pass' && id !== undefined) {
+      const result = passTask(dir, { id, evidence: flagValue('--evidence') ?? '' });
+      if (!result.ok) {
+        fail(result.reason);
+      }
+    } else if (action !== 'list') {
+      fail('usage: task add <id> <title> | task pass <id> --evidence <text> | task list');
+    }
+    process.stdout.write(`${JSON.stringify(readLedger(dir), null, 2)}\n`);
+    break;
+  }
   default:
-    fail('usage: ai-work <branch|register|is-agent-branch|spec-dir|diff|logs|login> [options]');
+    fail('usage: ai-work <branch|register|is-agent-branch|spec-dir|diff|logs|login|lesson|task> [options]');
 }
