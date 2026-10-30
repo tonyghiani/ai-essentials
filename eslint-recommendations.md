@@ -63,6 +63,10 @@ Also already in those three repos. Copy the groups verbatim rather than reconstr
 Each entry maps to a rule in `rules/typescript-style.mdc`, `rules/react-components.mdc`, or
 `rules/project-structure.mdc`. Where a lint rule exists, the `.mdc` file stays silent.
 
+The same rules ship as importable maps in [`eslint/style_rules.mjs`](eslint/style_rules.mjs)
+(`STYLE_RULES`, `TYPE_AWARE_RULES`, `JEST_RULES`); that file is the source when the two differ,
+and it is where a convention goes when review keeps catching it (`ai-work lesson --route lint-rule`).
+
 ```js
 'no-restricted-syntax': ['error',
   { selector: 'TSEnumDeclaration',

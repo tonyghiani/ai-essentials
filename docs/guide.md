@@ -60,7 +60,7 @@ cd ~/.ai-essentials/repo
 
 `--doctor` should end with `0 failed`. The warnings are things only you can do:
 
-1. **Codex:** open it once, run `/hooks`, review and trust the four ai-essentials hooks. Until you do,
+1. **Codex:** open it once, run `/hooks`, review and trust the five ai-essentials hooks. Until you do,
    interactive Codex has no guard hooks (delegated runs still get the commit-msg hook).
 2. **Cursor:** Settings, turn off Commit Attribution and PR Attribution. The hooks are untested in the app.
 3. **Cursor CLI** (only for `ai-delegate --tool cursor`): install the `agent` CLI from cursor.com/docs/cli.
@@ -90,9 +90,20 @@ A contract looks like this:
     "copy": [".env"],
     "setup": [{ "cmd": ["<install or bootstrap>"], "timeoutSec": 1200 }]
   },
-  "app": { "run": "<how to start the app>" }
+  "app": {
+    "run": ["<start command>", "<args>", "--port", "{port}"],
+    "url": "http://localhost:<port>",
+    "ready": "/<health path>",
+    "readyTimeoutSec": 300,
+    "ports": [<port>]
+  }
 }
 ```
+
+The `app` block is what `verify-app` uses to prove a change in the running app. `ai-verify --app-status` first looks for an
+instance that is already up: one serving this checkout is reused, one serving another worktree of the same repo becomes the
+"before" baseline, and anything else is reported and never touched. `--app-start` starts this checkout's instance only when
+nothing usable is running, and `--app-stop` stops only an instance it started.
 
 Rules worth knowing:
 
@@ -252,6 +263,25 @@ ai-delegate --remove --repo ~/code/app --slug <slug>
 
 A worktree is a real checkout: `cd` into it, run the app, edit by hand, push it yourself.
 
+**How an unattended run knows it is done.** Three gates, all deterministic or independent of the agent:
+
+- The Stop hook runs the contract, as in interactive sessions.
+- The run's task ledger is enforced: every task `tech-lead` or `deliver` adds with `ai-work task add` must be marked with
+  `ai-work task pass <id> --evidence "..."` before the run can end, unless it wrote `questions.md`.
+- For Claude, a separate small model (the mechanism behind `/goal`) reads the final message and lets the run stop only when it shows
+  passing output and a PR URL (or a commit, for `--task`), a question for you, or a blocker with the failing output.
+
+**One task of a larger spec.** `tech-lead` fans out with `ai-delegate --spec <SPEC.md> --task <id> --base <its branch>`. The child
+runs `deliver` on that task only, commits, and pushes nothing; the lead merges the branches and opens one PR.
+
+**Sandbox.** Claude runs in Claude Code's OS sandbox: writes only to the worktree, the git directory and the state directory, network
+only to GitHub and the npm and yarn registries. `--allow-domain HOST` and `--allow-write PATH` widen it; `--no-sandbox` turns it off
+(the done-when evaluator stays).
+
+**Claude Code's own worktree features.** For interactive parallel work in Claude only, `claude --worktree <name>` starts a session in
+a fresh worktree, `claude agents` lists every session by status, and `isolation: worktree` in an agent's frontmatter gives that agent its
+own worktree. `ai-delegate` stays the path for headless runs, Codex and Cursor, and anything that needs the audit and the ledger.
+
 ## 6. Letting it decide more over time
 
 The tech lead settles what rules and your past answers already settle, and asks the rest. You shape
@@ -299,7 +329,12 @@ Every skill works in any of the three tools. Say the name or what you want.
 | Resolve merge conflicts | `resolve-merge-conflicts` | Merges the base in (never rebases), resolves by intent, verifies, pushes normally |
 | Review someone's PR | `review-pr <url>` | Copy-pasteable conventional comments in your voice; you post them |
 | Decide whether to accept review feedback | `review-pr-comments` | Triage comment links, drafted replies |
-| A heavy multi-angle review of a branch | `review-team` | Six personas in parallel; costs several single reviews, so keep it for large or risky diffs |
+| A heavy multi-angle review of a branch | `review-team` | Three to six reviewers in parallel, then a `skeptic` that drops findings it can disprove; keep it for large or risky diffs |
+| Prove a change in the running app | `verify-app` | Reuses an instance already running; before and after table against a baseline checkout |
+| Two attempts at a risky task | `best-of-two` | Two `ai-delegate --task` runs and the `judge` agent; twice the cost |
+| Make sure you can defend an agent PR | `/explain-pr` | Short explanation, then a quiz; never marks the PR ready |
+| What to hand off tomorrow | `ai-triage` | Read-only report; `setup/install.sh --triage` schedules it for 18:00 on weekdays |
+| What the setup costs and what goes unused | `ai-checkup` | Skill usage, always-on tokens per tool, hook errors, stale memory |
 | A cleanup plan for a branch | `branch-refactor-planner` | Prioritised list; does not edit |
 | Write a PR description only | `pr-description-template` | Text only, never opens the PR |
 | Draft a GitHub issue | `gh-issue-writer` | Text only; never files it |
@@ -415,6 +450,11 @@ Every time you correct the agent (`no, ...`, `don't ...`, `I prefer ...`, `from 
 logs the prompt, at zero token cost, to `~/.ai-essentials/state/corrections.jsonl`. Failed checks go to
 `verify-failures.jsonl`.
 
+A review comment you accept on an agent's PR is a gap in the setup, not just in the PR. `review-pr-comments` and `ci-babysit` record
+it with `ai-work lesson --route <where it belongs>` (a lint rule, a hook, a skill gotcha, a CLAUDE.md line, a path rule, an eval or a
+memory) to `lessons.jsonl`. A convention review keeps catching becomes a rule in `eslint/style_rules.mjs`, so it fails the build
+instead of waiting for a reviewer.
+
 Every few weeks, or after a stretch where preferences came up, run `/memory-distill`. It groups
 repeated themes and proposes where each belongs, for your approval:
 
@@ -425,6 +465,12 @@ repeated themes and proposes where each belongs, for your approval:
 | A procedure you repeat | A skill |
 | A failure that keeps coming back | An eval task |
 | A decision you keep making the same way | A precedent in the decision policy |
+| A pitfall in one skill's procedure | That skill's Gotchas section |
+| A convention a linter can check | `eslint/style_rules.mjs` |
+
+Once a month, run `ai-checkup`. It shows which skills never fire (from the `log-skill-use` hook), what each tool's always-on context
+costs, hooks that are erroring, and memory files nothing links to. Prune what it finds; a skill nobody uses still costs its
+description in every session.
 
 It never writes without asking.
 

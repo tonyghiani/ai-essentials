@@ -166,6 +166,33 @@ The first full run found two real problems, both fixed:
 - **Traces and cost.** Claude delegated runs keep a `stream-json` trace (`run.jsonl`); the summary and the eval
   report carry `costUsd` and `turns`.
 
+### Practices adopted from the Claude Code team and other heavy users (2026-10-30)
+
+Each item names where it came from and where it lives. All of it is project-agnostic; per-repo facts stay in contracts.
+
+| Practice | Source | Where |
+|---|---|---|
+| Prove behaviour in the running app, reusing an instance already up | Boris Cherny's verify-app; Thariq: a verification skill is worth a week | `skills/verify-app`, `scripts/verify/app.mjs`, contract `app` block |
+| A separate model decides "done" | `/goal` docs (a prompt-based Stop hook) | `scripts/work/sandbox_settings.mjs --done-when`, wired by `ai-delegate` |
+| A skeptic disproves findings before they reach you | Claude Code Review's verification step; Boris's verifier plus skeptic | `agents/skeptic.md`, `review-team` step 3b |
+| A rejected PR is an automation failure | Boris; Mitchell Hashimoto's harness engineering | `ai-work lesson`, `review-pr-comments`, `ci-babysit`, `memory-distill` |
+| Gotchas sections grown from real failures | Thariq | Skills that have hit one; the `skill-gotcha` lesson route adds more |
+| Lint over prose for checkable conventions | Boris, automation as infrastructure | `eslint/style_rules.mjs` |
+| Context at session start and after compaction | Claude Code power-user tips | `session-context` hook (SessionStart; PostCompact cannot add context) |
+| Newer skill fields: forked audits, preloaded state, effort, skill-scoped hooks | Skills docs; Thariq's `/freeze` | Audit skills fork; delivery skills preload `git status` and the ledger; `edit-scope` hook |
+| Plan for review: decisions first, blind-spot pass, one question at a time, deviation log | HumanLayer research, plan, implement; Boris's July tips | `tech-lead` step 2, `deliver` implementation notes |
+| Effort per phase | Boris (interview high, mechanical low) | `effort` in skill frontmatter |
+| Compact before the window fills | Boris | `autoCompactWindow: 400000` |
+| End-of-day agents that only write reports | Mitchell Hashimoto | `ai-triage`, `skills/daily-triage`, `setup/install.sh --triage` |
+| Pass/fail task list the agent may only flip with evidence | Anthropic's long-running harness | `ai-work task`, enforced by the Stop gate in unattended runs |
+| Native worktrees for interactive parallel work | Claude Code docs | Guide section 5 |
+| Pairwise comparison of two attempts | Boris: tournaments beat absolute scoring; "scrap it and do it elegantly" | `skills/best-of-two`, `agents/judge.md`; `deliver` re-implements a clumsy first version |
+| Measure what the setup costs and what goes unused | Thariq's skill-usage hook; Boris's `/checkup` | `log-skill-use` hook, `ai-checkup` |
+| Skill-triggering evals | Anthropic's skill-creator guidance | `scripts/evals/trigger_eval.mjs` |
+| Let auto memory deduplicate | Auto-dream (rolling out) | `memory-distill` routes to non-memory destinations when it is on |
+| Share the setup as a plugin | Thariq: internal marketplaces | `.claude-plugin/`, `bin/`, `claude/agents/` (rendered, drift-checked) |
+| Comprehension check before a PR leaves draft | Boris's merge quiz | `skills/explain-pr` |
+
 ## Decisions
 
 | # | Decision | Reason |
@@ -358,7 +385,7 @@ passes and the output is shown.
   tells the agent to escalate.
 - **Adapters:** Claude and Codex exit 2 with stderr. Cursor prints `{"followup_message": "..."}`.
 - **Contract fields:** `checks[]`, `worktree.copy[]` (files to copy into new worktrees, replacing
-  `.worktreeinclude`), `app.run` (how to see the change).
+  `.worktreeinclude`), `app` (how to see the change; now `run` as argv, `url`, `ready`, `ports`, used by `verify-app`).
 - **Evidence rule:** "report the command and its output, not 'tests pass'" in the three global
   instruction files.
 - **Test:** in a scratch repo with a broken type, each tool is blocked from finishing until fixed.

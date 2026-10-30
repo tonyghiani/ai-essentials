@@ -75,11 +75,17 @@ Paths inside a skill resolve relative to that skill's own directory.
 | Push the agent's branch and open a draft PR | [skills/open-draft-pr/SKILL.md](skills/open-draft-pr/SKILL.md) |
 | Write a repo's verification contract | [skills/verify-contract/SKILL.md](skills/verify-contract/SKILL.md) |
 | Watch a draft PR's CI (for `/loop`) | [skills/ci-babysit/SKILL.md](skills/ci-babysit/SKILL.md) |
+| Prove a change in the running app, reusing an instance already up | [skills/verify-app/SKILL.md](skills/verify-app/SKILL.md) |
+| Two attempts at a risky task, judged pairwise | [skills/best-of-two/SKILL.md](skills/best-of-two/SKILL.md) |
+| Quiz the user on an agent PR before it leaves draft | [skills/explain-pr/SKILL.md](skills/explain-pr/SKILL.md) |
+| Read-only end-of-day triage report (scheduled `ai-triage`) | [skills/daily-triage/SKILL.md](skills/daily-triage/SKILL.md) |
 
 ## Agents (delegated workers)
 
 - [agents/reviewer.md](agents/reviewer.md): fresh-context, read-only review against the spec
 - [agents/convention-checker.md](agents/convention-checker.md): read-only pass or fail against the style rules
+- [agents/skeptic.md](agents/skeptic.md): read-only; tries to disprove each serious review finding against the code
+- [agents/judge.md](agents/judge.md): read-only; compares two patches pairwise, checking for position bias
 - [agents/esql-expert.md](agents/esql-expert.md) — ES|QL queries (domain-specific, read-only tools)
 - [agents/marco-blogger.md](agents/marco-blogger.md) — personal blog voice (replace for your own setup)
 
@@ -106,8 +112,14 @@ Hand an agent a ticket and get back a verified draft PR. Design and rationale:
 | Permissions from one source | `policy/guardrails.json`, `scripts/guardrails/render.mjs` |
 | Branch, spec and decision bookkeeping | `scripts/work/` (commands `ai-work`, `ai-decisions`, `ai-pr-body`), `skills/tech-lead/always-ask.md`, `policy/decisions.example.md` |
 | Headless runs in worktrees beside the repo | `ai-delegate`, `ai-fanout` (installed on the PATH from `scripts/delegate.sh`, `scripts/fanout.sh`) |
-| Evals of the setup itself | `scripts/evals/` (`node scripts/evals/run.mjs --self-test`) |
+| Task ledger and lessons | `ai-work task` (passes flip only with evidence; enforced in unattended runs), `ai-work lesson` (accepted review comments, routed by `memory-distill`) |
+| Done-when evaluator and sandbox for headless Claude runs | `scripts/work/sandbox_settings.mjs` (a per-run `--settings` file) |
+| App verification | `ai-verify --app-status\|--app-start\|--app-stop` (`scripts/verify/app.mjs`) |
+| Evals of the setup itself | `scripts/evals/`: `run.mjs --self-test` (delivery behaviour), `review_eval.mjs` (reviewers catch planted defects), `trigger_eval.mjs` (skills fire on the right prompts) |
+| Setup health | `ai-checkup` (skill usage, always-on token cost, hook errors, stale memory) |
+| End-of-day triage | `ai-triage` (`scripts/triage.sh`), scheduled by `setup/install.sh --triage` |
 | Install, merge into live configs, check | `setup/install.sh --all --config-write --doctor`; also links the `ai-*` commands into `~/.local/bin` |
+| Claude Code plugin for teammates | `.claude-plugin/` (portable skills, the four review agents, hooks, `bin/` commands); `claude plugin validate .` runs in `validate.sh` |
 
 Per-repo contracts (`contracts/*.json`) and `policy/decisions.local.md` are gitignored: this repo is public.
 
@@ -115,7 +127,9 @@ Per-repo contracts (`contracts/*.json`) and `policy/decisions.local.md` are giti
 
 - [claude/CLAUDE.md](claude/CLAUDE.md) — always-on global instructions
 - [claude/settings.reference.json](claude/settings.reference.json) — annotated settings reference
-- [claude/hooks/](claude/hooks/): `log-correction-signal` (feeds `memory-distill`), `verify-on-stop`, `guard-git`, `format-on-edit`. Cursor and Codex have the same four in `cursor/hooks/` and `codex/hooks/`
+- [claude/hooks/](claude/hooks/): `log-correction-signal` (feeds `memory-distill`), `verify-on-stop`, `guard-git`, `format-on-edit`, `session-context` (SessionStart, also after compaction), `log-skill-use` (feeds `ai-checkup`), `edit-scope` (registered by the tech-lead and deliver skills). Cursor has the first four; Codex has those plus `session-context`
+- [claude/rules/](claude/rules/): path-scoped rules, linked at `~/.claude/rules`
+- [eslint/style_rules.mjs](eslint/style_rules.mjs): the lint-checkable conventions as importable rule maps
 
 ## Codex CLI specifics
 

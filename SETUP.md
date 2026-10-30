@@ -117,7 +117,7 @@ Permission blocks are generated from `policy/guardrails.json`; after editing it 
 
 ### Steps no script can do
 
-- **Codex:** hooks run only after you trust them. Open Codex, run `/hooks`, and trust the four ai-essentials hooks.
+- **Codex:** hooks run only after you trust them. Open Codex, run `/hooks`, and trust the five ai-essentials hooks.
 - **Cursor:** turn off Commit Attribution and PR Attribution in Cursor Settings. Hook payloads there follow the docs and are untested on this machine, since the Cursor CLI is not installed.
 - **Per repo:** run the `verify-contract` skill once so the Stop-hook gate knows that repo's checks.
 

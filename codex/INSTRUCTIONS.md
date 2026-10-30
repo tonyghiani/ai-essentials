@@ -26,9 +26,9 @@ Skills are installed individually in `~/.agents/skills/`, including the `shared/
 review skills. Use the available skill when its description matches the task or the user names it.
 Resolve skill-relative paths from the skill's own directory.
 
-Custom agents are installed in `~/.codex/agents/` (or `$CODEX_HOME/agents/`): `reviewer` and
-`convention-checker` (read-only sandbox, fresh-context review), `esql-expert` (read-only) and
-`marco-blogger`. Re-run the installer after changing agent prompts or adding skills.
+Custom agents are installed in `~/.codex/agents/` (or `$CODEX_HOME/agents/`): `reviewer`,
+`convention-checker`, `skeptic` and `judge` (read-only sandbox, fresh-context review), `esql-expert`
+(read-only) and `marco-blogger`. Re-run the installer after changing agent prompts or adding skills.
 
 To take a task from spec to a draft PR, use the `tech-lead` skill. A task can be a ticket or just a
 description. It creates its own branch, writes the spec outside the repo, runs the verification

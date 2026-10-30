@@ -40,9 +40,16 @@ Install once, then check it:
 | One mechanical change over many files | `ai-fanout --tool claude --branch <slug> --list files.txt --prompt "Migrate {file} ..."`; runs 3 files first, then `--all` |
 | A draft PR babysat | `/loop 15m` with the `ci-babysit` skill |
 | To know the setup still works | `node scripts/evals/run.mjs --self-test` (free, 30 tasks), or `--tool claude\|codex\|cursor` for real runs, which report cost per task |
-| To know the reviewers still catch bugs | `node scripts/evals/review_eval.mjs` (real runs of the `reviewer` and `convention-checker` agents on planted defects and clean controls, about $0.20) |
+| To know the reviewers still catch bugs | `node scripts/evals/review_eval.mjs` (real runs of the `reviewer`, `convention-checker` and `skeptic` agents on planted defects and clean controls, about $0.30) |
+| To know skills fire on the right prompts | `node scripts/evals/trigger_eval.mjs` (a few cents per skill on Haiku; `--trials 3` before acting on one miss) |
+| To prove a change in the running app | the `verify-app` skill; `ai-verify --app-status` reuses an instance already running and tells this checkout's from another worktree's |
+| A report of what to hand off tomorrow | `ai-triage` (read-only; `./setup/install.sh --triage` schedules it on weekdays at 18:00) |
+| To see what the setup costs and what goes unused | `ai-checkup` |
+| The workflow skills without the rest of this repo (teammates) | `/plugin marketplace add tonyghiani/ai-essentials`, then `/plugin install ai-essentials@ai-essentials` (see the plugin notes below) |
 
 What it will not do, in any tool: credit itself on a commit, PR or comment, mark a PR ready, merge, force push, or push to a default branch. Hooks enforce that; `setup/doctor.mjs` checks the hooks and the attribution switches are in place. Details in [docs/implementation-plan.md](docs/implementation-plan.md).
+
+**Plugin notes.** The plugin carries the portable skills, the `reviewer`, `convention-checker`, `skeptic` and `judge` agents, the hooks, and the `ai-*` commands (from `bin/`). It leaves out what is personal: the global instructions and rules, `marco-code-style`, the voice-based review skills and `memory-distill`; skills that mention those still work, without that step. Plugin skills are namespaced (`/ai-essentials:tech-lead`), and the headless runners (`ai-delegate`, `ai-triage`) start skills by their bare names, so use those through the symlink install. The skill-scoped edit fence also needs the symlink install. Use one install or the other, not both, or every hook runs twice.
 
 The guard hook reads command text, so treat it as the first layer, not the last. Headless Claude runs (`ai-delegate`, `ai-fanout`) also run in Claude Code's OS sandbox: writes only inside the worktree, the repo's git directory and the state directory, network only to GitHub and the npm registry unless you pass `--allow-domain`. For repos you delegate to, add a GitHub ruleset on the default branch (block force pushes, require a pull request review): GitHub then refuses a force push or a merge however the command was phrased, and you cannot approve your own PR, so the agent cannot merge one under your login.
 
@@ -169,7 +176,11 @@ Delivery skills (the delegation system; see [docs/guide.md](docs/guide.md)):
 | [`open-draft-pr`](skills/open-draft-pr/) | tech-lead | Audits, pushes the agent's branch, opens a draft PR |
 | [`verify-contract`](skills/verify-contract/) | "set up verification" | Writes the repo's verification contract |
 | [`ci-babysit`](skills/ci-babysit/) | `/loop` | One round of fixing red CI on the agent's draft PR |
-| [`memory-distill`](skills/memory-distill/) | "distill memory" | Turns logged corrections and failed checks into memory proposals |
+| [`memory-distill`](skills/memory-distill/) | "distill memory" | Routes logged corrections, failed checks and review lessons to a memory, rule, lint rule, hook, eval or skill gotcha |
+| [`verify-app`](skills/verify-app/) | deliver, "check it in the app" | Proves the change in the running app, reusing an instance that is already up; before and after table |
+| [`best-of-two`](skills/best-of-two/) | tech-lead, "try two approaches" | Two parallel attempts at a risky task, the `judge` agent picks one |
+| [`explain-pr`](skills/explain-pr/) | `/explain-pr` | Explains an agent PR and quizzes you on it before it leaves draft |
+| [`daily-triage`](skills/daily-triage/) | `ai-triage` | Read-only report of review requests, red CI and assigned issues, with `ai-delegate` lines for the easy ones |
 
 Specialist skills the tech lead routes to by diff content: [`tdd`](skills/tdd/), [`dep-size`](skills/dep-size/), [`a11y-audit`](skills/a11y-audit/), [`i18n-sweep`](skills/i18n-sweep/), [`react-perf`](skills/react-perf/), [`api-contract-review`](skills/api-contract-review/), [`react-patterns`](skills/react-patterns/), [`marco-code-style`](skills/marco-code-style/).
 
@@ -196,6 +207,8 @@ Specialist personas for delegated work (subagents, parallel workers, or focused 
 |-------|--------------|
 | [`reviewer.md`](agents/reviewer.md) | Fresh-context, read-only review of a diff against its spec; strongest model |
 | [`convention-checker.md`](agents/convention-checker.md) | Read-only pass or fail against the style rules; fast model |
+| [`skeptic.md`](agents/skeptic.md) | Read-only; tries to disprove each serious review finding, so false positives never reach you |
+| [`judge.md`](agents/judge.md) | Read-only; compares two patches pairwise and reports position bias |
 | [`marco-blogger.md`](agents/marco-blogger.md) | Personal blog voice; outputs MDX with frontmatter |
 | [`esql-expert.md`](agents/esql-expert.md) | ES\|QL queries for Elasticsearch (domain-specific) |
 
