@@ -33,10 +33,42 @@ install_core() {
   _safe_link "$repo/scripts/work/decisions.mjs"     "$HOME/.local/bin/ai-decisions"
   _safe_link "$repo/scripts/work/pr_body.mjs"       "$HOME/.local/bin/ai-pr-body"
   _safe_link "$repo/scripts/guard/audit_branch.mjs" "$HOME/.local/bin/ai-audit"
+  _safe_link "$repo/scripts/checkup/checkup.mjs"    "$HOME/.local/bin/ai-checkup"
+  _safe_link "$repo/scripts/triage.sh"              "$HOME/.local/bin/ai-triage"
   case ":$PATH:" in
     *":$HOME/.local/bin:"*) ;;
     *) warn "$HOME/.local/bin is not on your PATH; add it so the ai-* commands work." ;;
   esac
+}
+
+# The end-of-day triage: a macOS LaunchAgent that runs ai-triage on weekdays at 18:00. Read-only by
+# construction (see scripts/triage.sh); it writes a report and nothing else. Opt in with --triage.
+install_triage_schedule() {
+  local repo="$1"
+  if [[ "$(uname)" != Darwin ]]; then
+    warn "The triage schedule is a macOS LaunchAgent; on this system, schedule ai-triage with cron."
+    return
+  fi
+  local node_bin node_dir plist label="com.ai-essentials.triage"
+  # `dirname "$(command -v node)"` prints "." when node is missing, so test the lookup itself.
+  if ! node_bin="$(command -v node)"; then
+    warn "node not found; the triage schedule needs it on the LaunchAgent's PATH."
+    return
+  fi
+  node_dir="$(dirname "$node_bin")"
+  plist="$HOME/Library/LaunchAgents/$label.plist"
+  # launchd does not create the log directory itself.
+  mkdir -p "$HOME/.ai-essentials/state/triage" "$HOME/Library/LaunchAgents"
+  sed -e "s#__HOME__#$HOME#g" -e "s#__NODE_DIR__#$node_dir#g" "$repo/setup/triage.launchd.plist.template" > "$plist"
+  plutil -lint "$plist" >/dev/null || { warn "Generated $plist does not lint; not loading it."; return; }
+  # Reload, so a re-install picks up a changed template instead of failing on "already loaded".
+  launchctl bootout "gui/$(id -u)/$label" 2>/dev/null || true
+  # Under set -e a failed bootstrap would end the installer before --config and --doctor run.
+  if ! launchctl bootstrap "gui/$(id -u)" "$plist"; then
+    warn "launchctl could not load $plist; run: launchctl bootstrap gui/$(id -u) $plist"
+    return
+  fi
+  success "Scheduled ai-triage on weekdays at 18:00 (reports in ~/.ai-essentials/state/triage/)"
 }
 
 # Render the neutral agent sources into one tool's native format. Usage: render_agents REPO TOOL DEST
@@ -70,6 +102,7 @@ Options:
                  the live Claude, Cursor and Codex configs (writes nothing)
   --config-write Apply that merge, saving a backup of each file under ~/.ai-essentials/backups
   --doctor       Check the install: links, hooks, attribution off in every tool, git and gh identity
+  --triage       Schedule the read-only end-of-day triage (ai-triage) on weekdays at 18:00 (macOS)
   --help         Show this message
 
 Safe to re-run. Codex backs up conflicts under ~/.codex/backups/ai-essentials/;
@@ -88,6 +121,7 @@ INSTALL_CODEX=false
 RUN_CONFIG=false
 CONFIG_WRITE=false
 RUN_DOCTOR=false
+INSTALL_TRIAGE=false
 
 for arg in "$@"; do
   case $arg in
@@ -98,6 +132,7 @@ for arg in "$@"; do
     --config)      RUN_CONFIG=true ;;
     --config-write) RUN_CONFIG=true; CONFIG_WRITE=true ;;
     --doctor)      RUN_DOCTOR=true ;;
+    --triage)      INSTALL_TRIAGE=true ;;
     --help)        usage; exit 0 ;;
     *) printf 'Unknown option: %s\n' "$arg" >&2; usage; exit 1 ;;
   esac
@@ -110,6 +145,7 @@ fi
 [[ "$INSTALL_CLAUDE_CODE" == true ]] && install_claude_code "$REPO"
 [[ "$INSTALL_CURSOR"      == true ]] && install_cursor      "$REPO"
 [[ "$INSTALL_CODEX"       == true ]] && install_codex       "$REPO"
+[[ "$INSTALL_TRIAGE"      == true ]] && install_triage_schedule "$REPO"
 
 if [[ "$RUN_CONFIG" == true ]]; then
   info "Live configs"
