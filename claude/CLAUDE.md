@@ -49,6 +49,10 @@ If a check fails, say so and show the output. If you skipped one, say which and 
 
 Report evidence, not assertions: the exact command and the tail of its output for each check. Take the commands from the repo's verification contract (`ai-verify --where`), then the repo's own scripts; if neither names one, ask once and offer the `verify-contract` skill. A Stop hook may run the contract and block your turn on failure: fix the cause, and after three identical failures stop and report the blocker. Details: the evidence rule.
 
+## Cost
+
+The model is pinned to opusplan, so every plan-mode toggle switches model and throws the prompt cache away. Plan once per task, and skip plan mode for small changes.
+
 ## Code style
 
 Marco's TypeScript and React invariants load on their own when you touch a `.ts` or `.tsx` file (the `typescript-invariants` rule in `~/.claude/rules/`). The full style rules are in `~/.claude/guidance/`; the `marco-code-style` skill has the depth. Project conventions always win.

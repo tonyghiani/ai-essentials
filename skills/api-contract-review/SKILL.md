@@ -2,7 +2,7 @@
 name: api-contract-review
 description: Review an HTTP route, plugin contract, or exported package API for compatibility, validation, and evolvability before it ships. Invoke when adding or changing a route, a plugin setup/start contract, a saved object schema, or a package public export, and when the user asks whether a change is breaking.
 context: fork
-agent: Explore
+agent: auditor
 background: false
 ---
 

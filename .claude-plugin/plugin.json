@@ -11,7 +11,8 @@
     "./claude/agents/reviewer.md",
     "./claude/agents/convention-checker.md",
     "./claude/agents/skeptic.md",
-    "./claude/agents/judge.md"
+    "./claude/agents/judge.md",
+    "./claude/agents/auditor.md"
   ],
   "hooks": "./claude/plugin-hooks.json"
 }

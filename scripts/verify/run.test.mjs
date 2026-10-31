@@ -137,6 +137,18 @@ describe('runVerify', () => {
     assert.doesNotMatch(result.message, /notes\.md/);
   });
 
+  it('fails a change that only deletes a test file, though no changed file is left to check', () => {
+    mkdirSync(join(ctx.repo, 'src'), { recursive: true });
+    writeFileSync(join(ctx.repo, 'src', 'a.test.ts'), 'expect(1).toBe(1);\n');
+    git(ctx.repo, ['add', '.']);
+    git(ctx.repo, ['commit', '-q', '-m', 'add test']);
+    rmSync(join(ctx.repo, 'src', 'a.test.ts'));
+    writeContract({ checks: [{ name: 'lint', cmd: PASSING_CMD }] });
+    const result = runVerify({ cwd: ctx.repo });
+    assert.equal(result.status, 'fail');
+    assert.match(result.message, /\[test-integrity\] src\/a\.test\.ts: test file deleted/);
+  });
+
   it('reports a timed-out check as a failure', () => {
     touchSource();
     writeContract({

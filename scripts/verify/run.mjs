@@ -24,6 +24,7 @@ import { appendJsonl, updateJson } from '../lib/state.mjs';
 import { currentBranch, isAgentBranch, specDir } from '../work/branches.mjs';
 import { ledgerEnforced, ledgerGaps } from '../work/tasks.mjs';
 import { resolveContract } from './contract.mjs';
+import { testIntegrityFailure } from './test_integrity.mjs';
 
 /** Identical failures in a row before the agent is told to stop retrying. */
 export const MAX_IDENTICAL_FAILURES = 3;
@@ -187,8 +188,11 @@ function runContractChecks(root) {
     return { status: 'ran', failures: [{ name: 'contract', detail: `${resolved.path}: ${resolved.reason}` }] };
   }
   const changed = changedFiles(root);
+  // Read before the empty check: changedFiles drops deleted files, so a change that only deletes a
+  // test would otherwise look like no change at all.
+  const integrity = resolved.contract.testIntegrity === false ? null : testIntegrityFailure(root);
   if (changed.length === 0) {
-    return { status: 'skipped', message: 'no changed files' };
+    return integrity === null ? { status: 'skipped', message: 'no changed files' } : { status: 'ran', failures: [integrity] };
   }
   // A loop, not flatMap: each check's timeout depends on the time the earlier ones used.
   const startedAt = Date.now();
@@ -200,7 +204,7 @@ function runContractChecks(root) {
       failures.push(failure);
     }
   }
-  return { status: 'ran', failures };
+  return { status: 'ran', failures: integrity === null ? failures : [...failures, integrity] };
 }
 
 /**

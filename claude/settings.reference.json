@@ -65,7 +65,7 @@
     "pr": ""
   },
   "includeCoAuthoredBy": false,
-  "//hooks": "SessionStart prints the branch, spec, task ledger and contract state, and restates the hard rules after a compaction (it fires with source compact; PostCompact cannot add context). PreToolUse(Skill) and UserPromptExpansion log skill use for ai-checkup. UserPromptSubmit logs corrections for memory-distill. PreToolUse(Bash) is the no-credit and draft-only guard. PostToolUse formats edited files from the repo's verification contract. Stop runs the contract and blocks the turn on failure. The format and Stop hooks read the contract through scripts/verify; no hook writes into a target repo. The Stop timeout (1200s) sits above the verifier's own 1080s budget: a hook Claude Code kills at its timeout ends the turn unverified and logs nothing.",
+  "//hooks": "SessionStart prints the branch, spec, task ledger and contract state, and restates the hard rules after a compaction (it fires with source compact; PostCompact cannot add context). PreToolUse(Skill) and UserPromptExpansion log skill use for ai-checkup. UserPromptSubmit logs corrections for memory-distill. PreToolUse(Bash) is the no-credit and draft-only guard. PostToolUse formats edited files from the repo's verification contract, and shrinks a passing test, lint or typecheck run to one line naming a file with the full output (failing runs go to PostToolUseFailure and reach Claude whole). Stop runs the contract and blocks the turn on failure. The format and Stop hooks read the contract through scripts/verify; no hook writes into a target repo. The Stop timeout (1200s) sits above the verifier's own 1080s budget: a hook Claude Code kills at its timeout ends the turn unverified and logs nothing.",
   "hooks": {
     "SessionStart": [
       {
@@ -124,6 +124,15 @@
           {
             "type": "command",
             "command": "node \"$HOME\"/.claude/hooks/format-on-edit.mjs"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME\"/.claude/hooks/quiet-checks.mjs"
           }
         ]
       }

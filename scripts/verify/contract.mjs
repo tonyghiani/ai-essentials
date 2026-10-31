@@ -15,7 +15,9 @@
  *   How to see a change in the running app. `run` is an argv like a check's cmd and may hold a
  *   `{port}` element; a string `run` is the older descriptive form, kept valid but never executed.
  *   `ready` is a path under `url`, or a full URL, that answers 2xx or 3xx once the app is up.
- * @typedef {{ checks: ICheck[], format?: IFormat, worktree?: { copy?: string[], setup?: ISetupStep[] }, app?: IAppConfig }} IContract
+ * @typedef {{ checks: ICheck[], format?: IFormat, worktree?: { copy?: string[], setup?: ISetupStep[] }, app?: IAppConfig, testIntegrity?: boolean }} IContract
+ *   `testIntegrity: false` turns off the gate that fails a change for deleting tests, skipping them,
+ *   dropping assertions or silencing a lint or type error without a reason. On by default.
  *
  * @typedef {{ status: 'none' }
  *   | { status: 'untrusted', path: string }
@@ -157,6 +159,9 @@ export function contractProblem(value) {
         return problem;
       }
     }
+  }
+  if (value.testIntegrity !== undefined && typeof value.testIntegrity !== 'boolean') {
+    return 'testIntegrity must be true or false';
   }
   // The app block is not checked here: no Stop-hook check uses it, and a typo in it would otherwise
   // make the whole contract invalid and fail every turn in the repo. verify-app reports it instead.

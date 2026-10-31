@@ -11,7 +11,8 @@
       { "matcher": "Skill", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/claude/hooks/log-skill-use.mjs\"" }] }
     ],
     "PostToolUse": [
-      { "matcher": "Edit|Write", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/claude/hooks/format-on-edit.mjs\"" }] }
+      { "matcher": "Edit|Write", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/claude/hooks/format-on-edit.mjs\"" }] },
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/claude/hooks/quiet-checks.mjs\"" }] }
     ],
     "Stop": [
       { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/claude/hooks/verify-on-stop.mjs\"", "timeout": 1200 }] }

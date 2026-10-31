@@ -88,6 +88,8 @@ Paths inside a skill resolve relative to that skill's own directory.
 - [agents/convention-checker.md](agents/convention-checker.md): read-only pass or fail against the style rules
 - [agents/skeptic.md](agents/skeptic.md): read-only; tries to disprove each serious review finding against the code
 - [agents/judge.md](agents/judge.md): read-only; compares two patches pairwise, checking for position bias
+- [agents/auditor.md](agents/auditor.md): read-only; runs the forked audit skills (a11y, API contract, render perf) on the standard tier
+- [agents/Explore.md](agents/Explore.md): replaces Claude Code's built-in Explore so code searches run on the fast tier instead of the session model
 - [agents/esql-expert.md](agents/esql-expert.md) — ES|QL queries (domain-specific, read-only tools)
 - [agents/marco-blogger.md](agents/marco-blogger.md) — personal blog voice (replace for your own setup)
 
@@ -129,7 +131,7 @@ Per-repo contracts (`contracts/*.json`) and `policy/decisions.local.md` are giti
 
 - [claude/CLAUDE.md](claude/CLAUDE.md) — always-on global instructions
 - [claude/settings.reference.json](claude/settings.reference.json) — annotated settings reference
-- [claude/hooks/](claude/hooks/): `log-correction-signal` (feeds `memory-distill`), `verify-on-stop`, `guard-git`, `format-on-edit`, `session-context` (SessionStart, also after compaction), `log-skill-use` (feeds `ai-checkup`), `edit-scope` (registered by the tech-lead and deliver skills). Cursor has the first four; Codex has those plus `session-context`
+- [claude/hooks/](claude/hooks/): `log-correction-signal` (feeds `memory-distill`), `verify-on-stop`, `guard-git`, `format-on-edit`, `quiet-checks` (Claude only: a passing test, lint or typecheck run shrinks to one line), `session-context` (SessionStart, also after compaction), `log-skill-use` (feeds `ai-checkup`), `edit-scope` (registered by the tech-lead and deliver skills). Cursor has the first four; Codex has those plus `session-context`
 - [claude/rules/](claude/rules/): path-scoped rules, linked at `~/.claude/rules`
 - [eslint/style_rules.mjs](eslint/style_rules.mjs): the lint-checkable conventions as importable rule maps
 

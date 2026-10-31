@@ -2,7 +2,7 @@
 name: react-perf
 description: Audit React render performance from the code, prioritised by measured or measurable impact. Invoke when the user reports a slow or janky UI, asks about re-renders, mentions memo/useMemo/useCallback, or asks for a perf review of a component tree. Refuses to recommend memoisation without a reason.
 context: fork
-agent: Explore
+agent: auditor
 background: false
 ---
 

@@ -2,7 +2,7 @@
 name: a11y-audit
 description: Audit UI code for accessibility defects that block keyboard and screen-reader users. Invoke when adding or reviewing interactive UI, a form, a modal or flyout, a custom control, or when the user asks about a11y, WCAG, screen readers, or keyboard navigation.
 context: fork
-agent: Explore
+agent: auditor
 background: false
 ---
 
