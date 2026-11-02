@@ -21,6 +21,11 @@ const BARE_SUPPRESSION =
   /(?:\/\/|\/\*)\s*(?:@ts-(?:ignore|nocheck)\b|@ts-expect-error\s*(?:\*\/)?\s*$|eslint-disable(?:-next-line|-line)?\b(?![^\n]*\s--\s))/g;
 const ASSERTION = /\bexpect\s*\(|\bassert(?:\.\w+)?\s*\(|\bassert\s/g;
 const UNTRACKED_MAX_BYTES = 1024 * 1024;
+const LOCAL_BASE_BRANCHES = ['main', 'master'];
+/** More files than one session plausibly touches; see readChange. */
+const MAX_CHANGED_FILES = 500;
+/** Rename detection gives up on big diffs unless the limit is raised, which turns a move into a delete. */
+const DIFF_CONFIG = ['-c', `diff.renameLimit=${MAX_CHANGED_FILES * 4}`];
 
 /**
  * @typedef {{ added: string[], removed: string[] }} ILines
@@ -87,22 +92,40 @@ export function integrityFindings({ deleted, files }) {
 }
 
 /**
- * Reads the change the same way changedFiles does: the branch against its base,
- * plus anything uncommitted or untracked.
+ * Where this branch left the default branch. The local branch is preferred over
+ * origin's: in a fork checkout origin/main can lag by thousands of commits, and
+ * everything between it and HEAD would count as this session's own work. A
+ * merge base with the local branch is the fork point however far the branch has
+ * moved on since.
  *
  * @param {string} root
- * @returns {{ deleted: string[], files: Map<string, ILines> }}
+ * @returns {string | null}
+ */
+function forkPoint(root) {
+  const local = LOCAL_BASE_BRANCHES.find((branch) => git(root, ['rev-parse', '--verify', '--quiet', branch]) !== null);
+  const base = local ?? defaultBase(root);
+  return base === null ? null : git(root, ['merge-base', base, 'HEAD']);
+}
+
+/**
+ * Reads the change the same way changedFiles does: the branch from its fork
+ * point, plus anything uncommitted or untracked.
+ *
+ * @param {string} root
+ * @returns {{ deleted: string[], files: Map<string, ILines> } | null} Null when the change is too large
+ *   to be one session's work, which means the base is wrong; failing on it would blame the agent for
+ *   history it did not write.
  */
 function readChange(root) {
-  const base = defaultBase(root);
-  const mergeBase = base === null ? null : git(root, ['merge-base', base, 'HEAD']);
+  const mergeBase = forkPoint(root);
   const against = mergeBase ?? 'HEAD';
-  const status = git(root, ['diff', '-M', '--name-status', against]) ?? '';
-  const deleted = status
-    .split('\n')
-    .filter((line) => line.startsWith('D\t'))
-    .map((line) => line.slice(2));
-  const files = parseDiff(git(root, ['diff', '-M', '-U0', '--no-color', against]) ?? '');
+  const status = git(root, [...DIFF_CONFIG, 'diff', '-M', '--name-status', against]) ?? '';
+  const statusLines = status.split('\n').filter((line) => line !== '');
+  if (statusLines.length > MAX_CHANGED_FILES) {
+    return null;
+  }
+  const deleted = statusLines.filter((line) => line.startsWith('D\t')).map((line) => line.slice(2));
+  const files = parseDiff(git(root, [...DIFF_CONFIG, 'diff', '-M', '-U0', '--no-color', against]) ?? '');
   const untracked = (git(root, ['ls-files', '--others', '--exclude-standard']) ?? '').split('\n');
   for (const file of untracked) {
     const path = join(root, file);
@@ -118,7 +141,8 @@ function readChange(root) {
  * @returns {{ name: string, detail: string } | null}
  */
 export function testIntegrityFailure(root) {
-  const findings = integrityFindings(readChange(root));
+  const change = readChange(root);
+  const findings = change === null ? [] : integrityFindings(change);
   if (findings.length === 0) {
     return null;
   }

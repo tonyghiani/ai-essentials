@@ -149,6 +149,21 @@ describe('runVerify', () => {
     assert.match(result.message, /\[test-integrity\] src\/a\.test\.ts: test file deleted/);
   });
 
+  it('does not blame the session for tests that history deleted between a stale origin and HEAD', () => {
+    mkdirSync(join(ctx.repo, 'src'), { recursive: true });
+    writeFileSync(join(ctx.repo, 'src', 'a.test.ts'), 'expect(1).toBe(1);\n');
+    git(ctx.repo, ['add', '.']);
+    git(ctx.repo, ['commit', '-q', '-m', 'add test']);
+    git(ctx.repo, ['update-ref', 'refs/remotes/origin/main', 'HEAD']);
+    git(ctx.repo, ['symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main']);
+    git(ctx.repo, ['rm', '-q', 'src/a.test.ts']);
+    git(ctx.repo, ['commit', '-q', '-m', 'upstream removed the test']);
+    writeContract({ checks: [{ name: 'lint', cmd: FAILING_CMD }] });
+    const result = runVerify({ cwd: ctx.repo });
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.message, 'no changed files');
+  });
+
   it('reports a timed-out check as a failure', () => {
     touchSource();
     writeContract({
