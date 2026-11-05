@@ -64,12 +64,19 @@ function count(lines, pattern) {
   return lines.reduce((total, line) => total + (line.match(pattern)?.length ?? 0), 0);
 }
 
+/** `src/a.test.ts` and `src/a.ts` share the key `src/a`. */
+const stem = (/** @type {string} */ file) => file.replace(/(?:\.(?:test|spec))?\.[cm]?[jt]sx?$/, '');
+
 /**
  * @param {{ deleted: string[], files: Map<string, ILines> }} change
  * @returns {string[]} One line per finding; empty when the tests are intact.
  */
 export function integrityFindings({ deleted, files }) {
-  const findings = deleted.filter((file) => TEST_FILE.test(file)).map((file) => `${file}: test file deleted`);
+  // A test deleted together with the source it sits beside tests code that is gone, not a weakened check.
+  const deletedSources = new Set(deleted.filter((file) => SOURCE_FILE.test(file) && !TEST_FILE.test(file)).map(stem));
+  const findings = deleted
+    .filter((file) => TEST_FILE.test(file) && !(/\.(?:test|spec)\./.test(file) && deletedSources.has(stem(file))))
+    .map((file) => `${file}: test file deleted`);
   for (const [file, { added, removed }] of files) {
     if (!SOURCE_FILE.test(file) && !/\.(?:py|go)$/.test(file)) {
       continue;

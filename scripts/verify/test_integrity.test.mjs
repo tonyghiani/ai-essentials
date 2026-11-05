@@ -15,8 +15,8 @@ function change(files, deleted = []) {
 }
 
 describe('integrityFindings', () => {
-  it('flags a deleted test file but not a deleted source file', () => {
-    const findings = integrityFindings(change({}, ['src/a.test.ts', 'src/a.ts']));
+  it('flags a deleted test file whose source stays, but not one deleted with its source', () => {
+    const findings = integrityFindings(change({}, ['src/a.test.ts', 'src/b.test.ts', 'src/b.ts', 'src/c.ts']));
     assert.deepEqual(findings, ['src/a.test.ts: test file deleted']);
   });
 
