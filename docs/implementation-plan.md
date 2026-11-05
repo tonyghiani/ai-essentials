@@ -160,7 +160,7 @@ The first full run found two real problems, both fixed:
   `/tech-lead`.
 - **Context.** The TS invariants moved out of `claude/CLAUDE.md` into `claude/rules/typescript-invariants.md`
   (`paths:` scoped, linked at `~/.claude/rules`); the full rules are linked at `~/.claude/guidance`.
-- **Review.** `reviewer` runs on the strong tier. `review-team` runs three to six reviewers, passes paths instead
+- **Review.** `reviewer` runs on the strong tier. `review-team` runs a fixed panel of two reviewers, passes paths instead
   of pasted files, and uses `convention-checker` in place of the Code Quality persona.
   `scripts/evals/review_eval.mjs` measures whether the reviewers catch planted defects.
 - **Traces and cost.** Claude delegated runs keep a `stream-json` trace (`run.jsonl`); the summary and the eval
@@ -205,8 +205,8 @@ Source: the claude.dev post "Spending your effort". Effort buys verification and
 | Level | Used for | Where it is set |
 |---|---|---|
 | low | Mechanical, self-checking work: drafting text, opening the PR, a CI round, quizzes, memory proposals, convention checks, the read-only triage | `effort: low` on `gh-issue-writer`, `pr-description-template`, `open-draft-pr`, `ci-babysit`, `explain-pr`, `memory-distill`; `convention-checker` agent; `ai-triage --effort` default |
-| medium | Everyday work and implementation | `effortLevel` in `claude/settings.reference.json`; `effort: medium` on `deliver` |
-| high | Verification, review, planning and interviews; unattended runs | `effort: high` on `tech-lead`, `grill-me`, `brainstorm`, `web-research`, `review-team`, `review-pr`; `reviewer`, `skeptic`, `judge` agents; `ai-delegate` and `ai-fanout --effort` default |
+| medium | Everyday work and implementation | `effortLevel` in `claude/settings.reference.json`; `effort: medium` on `deliver`, `review-pr` |
+| high | Verification, review, planning and interviews; unattended runs | `effort: high` on `tech-lead`, `grill-me`, `brainstorm`, `web-research`, `review-team`; `reviewer`, `skeptic`, `judge` agents; `ai-delegate` and `ai-fanout --effort` default |
 | max | Opt-in only, for a hard fully autonomous build or a security audit | `ai-delegate --effort max`, or `/effort max` in a session |
 
 Pinned levels override the session default, so `/effort low` for a quick session does not weaken a review. Agent `effort` is rendered for Claude only; Codex and Cursor have no per-agent effort and inherit.

@@ -1,35 +1,32 @@
 ---
 name: review-team
 description: >-
-  Runs a panel of three to six read-only reviewers in parallel, each with a
-  distinct perspective, has a skeptic try to disprove every serious finding,
-  and consolidates what survives into one prioritized report. Use when the user says "review team", "multi-perspective review" or
-  "multi-angle review" of branch changes, a module or a plan, and when the
-  tech-lead skill meets a large or risky diff.
+  Runs a fixed panel of two read-only reviewers in parallel (an adversarial
+  correctness reviewer and a conventions checker), has a skeptic try to
+  disprove every serious finding, and consolidates what survives into one
+  prioritized report. Use when the user says "review team", "multi-perspective
+  review" or "multi-angle review" of branch changes, a module or a plan, and
+  when the tech-lead skill meets a large or risky diff.
 effort: high
 ---
 
 # Review Team
 
-Launch the selected reviewers in parallel, each with a distinct perspective,
-verify their Critical and Important findings against the code, then
+Launch the two reviewers in parallel, verify their Critical findings against the code, then
 consolidate what survives into a single prioritized report.
 
 ## Reviewers
 
-| Name | Runs | Source | Model |
-|---|---|---|---|
-| Adversarial | always | `reviewers/adversarial.md` | strongest available (the session model) |
-| Fresh Eyes | always | `reviewers/fresh-eyes.md` | standard tier (`sonnet` in Claude Code) |
-| Conventions | always, on code | the `convention-checker` agent | its own (`haiku`) |
-| Architecture | the diff crosses a module or package boundary, changes a public API, a persisted schema or cross-package imports | `reviewers/architecture.md` | standard tier |
-| Product Flow | the diff changes user-visible behaviour | `reviewers/product-flow.md` | standard tier |
-| Observability Expert | the diff touches logging, metrics, tracing, telemetry, or ES\|QL and Elasticsearch queries | `reviewers/observability-expert.md` | standard tier |
+| Name | Source | Model |
+|---|---|---|
+| Adversarial | `reviewers/adversarial.md` | strongest available (the session model) |
+| Conventions | the `convention-checker` agent (skipped when the change has no code) | its own (`haiku`) |
 
-So three reviewers at least, six at most. Say which conditional reviewers you
-skipped and why. When the review runs inside a delivery that has a spec, the
-`reviewer` agent replaces Adversarial: it covers correctness and also checks
-the change against the spec.
+The panel is always these two, whatever the diff touches. There are no
+architecture, product-flow or observability reviewers; Adversarial judges
+correctness and robustness only. When the review runs inside a delivery that
+has a spec, the `reviewer` agent replaces Adversarial: it covers correctness and
+also checks the change against the spec.
 
 There is no Code Quality persona: style is the convention checker's job, and a
 refactoring plan is the `branch-refactor-planner` skill's, run on its own when
@@ -40,7 +37,7 @@ installed it. If a read fails, `ls` the skill directory rather than guessing.
 
 ## When to use, and when not to
 
-Each reviewer is a full agent run, and verification (Step 3b) adds one cheaper run per file with Critical or Important findings, capped at 10 findings. Use this skill when the user asks for it, or when the tech-lead skill finds a large or risky change: roughly 400 or more changed lines, or a change in an always-ask class. For the inner loop of a delivery use the `reviewer` and `convention-checker` agents alone; they are cheaper and read-only.
+Each reviewer is a full agent run, and verification (Step 3b) adds one cheaper run per file with Critical findings, capped at 10 findings. Use this skill when the user asks for it, or when the tech-lead skill finds a large or risky change: roughly 400 or more changed lines, or a change in an always-ask class. For the inner loop of a delivery use the `reviewer` and `convention-checker` agents alone; they are cheaper and read-only.
 
 ## Mode detection
 
@@ -124,19 +121,14 @@ brief stays small and each reviewer reads only what its focus needs:
 | Reviewer | Read first |
 |----------|------------|
 | Adversarial | All changed source files |
-| Fresh Eyes | Changed files and the patch only. **Never** give it PR descriptions, commit messages, plan documents, issue text, or any narrative you gathered |
 | Conventions | The patch, plus the absolute paths of the rule files that match the changed file types (installed in `~/.claude/guidance/`, `~/.codex/guidance/` or `~/.cursor/rules/`) |
-| Architecture | Changed files that define module boundaries, public APIs, persisted schemas, and cross-package imports |
-| Product Flow | Changed UI components, routes, hooks managing user state, and server/API handlers that serve the UI |
-| Observability Expert | Files touching queries, alerts, metrics, logging, telemetry, LLM prompts that generate observability queries, and threshold/aggregation logic |
 
-### Step 2 -- Read the selected persona files
+### Step 2 -- Read the persona file
 
-Read the persona file of each selected reviewer (not the convention checker,
-which is an agent with its own instructions) in one parallel batch. You will
-embed each verbatim in the matching reviewer prompt.
+Read `reviewers/adversarial.md` (the convention checker is an agent with its
+own instructions). You will embed it verbatim in the Adversarial prompt.
 
-### Step 3 -- Launch the selected reviewers in parallel
+### Step 3 -- Launch both reviewers in parallel
 
 Run them **concurrently** when your environment supports parallel workers
 (subagents, task delegation, background agents). If it does not, run them
@@ -144,7 +136,7 @@ sequentially; consolidation in Step 4 is the same.
 
 Send one prompt per reviewer, combining:
 
-1. The persona instructions (from the file read in Step 2)
+1. The persona instructions (from the file read in Step 2; Adversarial only)
 2. That reviewer's file pointers from Step 1b
 3. `PREVIOUS_FINDINGS` from Step 0 (if any -- see block below)
 4. The output format template (copy the block below verbatim)
@@ -152,13 +144,6 @@ Send one prompt per reviewer, combining:
 Give the convention checker its usual brief (patch path and rule paths) and
 map its violations into the Minor section unless a rule file marks one as
 blocking.
-
-For **Fresh Eyes**, add this line at the top of its prompt:
-
-```
-BLIND REVIEW: You have not seen the PR description, commit messages, or design
-docs. Judge only from the code and diff below.
-```
 
 Each reviewer should operate in **read-only mode** when your tool supports it
 (analyze and report; do not edit files).
@@ -225,21 +210,21 @@ If PREVIOUS FINDINGS were provided, prefix each re-reported finding with
 [PERSISTS] or [EVOLVED]. New findings have no prefix.
 ```
 
-### Step 3b -- Verify Critical and Important findings
+### Step 3b -- Verify Critical findings
 
 Reviewers asked to find problems report some that are wrong: a guard they
 missed, a caller that never passes the bad input. Before anything reaches the
-report, the `skeptic` agent tries to disprove each Critical and Important
-finding against the code. Minor findings skip this step.
+report, the `skeptic` agent tries to disprove each Critical finding against
+the code. Important and Minor findings skip this step to keep the review fast;
+they carry `[unverified]` in the report.
 
-1. Collect every Critical and Important finding. The `reviewer` agent's
-   `[blocks]` counts as Critical and `[gap]` as Important. Merge findings that
-   cite the same location, so one defect is verified once.
+1. Collect every Critical finding. The `reviewer` agent's `[blocks]` counts as
+   Critical. Merge findings that cite the same location, so one defect is
+   verified once.
 2. A `[PERSISTS]` finding that was CONFIRMED in the previous run keeps that
    verdict and is not sent again.
-3. **Cap: at most 10 findings verified per review.** Pick Critical before
-   Important, then findings raised by more than one reviewer. The rest go into
-   the report labelled `[unverified]`.
+3. **Cap: at most 10 findings verified per review.** Pick findings raised by
+   both reviewers first. The rest go into the report labelled `[unverified]`.
 4. Group the selected findings by file and launch one `skeptic` run per file,
    in parallel. Each brief carries the repo root, the patch path (and the spec
    path when the review runs inside a delivery), and that file's findings
@@ -260,7 +245,7 @@ runs reviewers, read-only.
 
 ### Step 4 -- Consolidate
 
-After every selected reviewer returns and Step 3b has verified its findings:
+After both reviewers return and Step 3b has verified its findings:
 
 1. Group findings by file path, then by line number / range.
 2. When two or more reviewers flag the same location, merge into one item
@@ -269,9 +254,7 @@ After every selected reviewer returns and Step 3b has verified its findings:
    (Critical > Important > Minor).
 4. Carry forward the `[PERSISTS]` / `[EVOLVED]` prefixes from reviewers.
    New findings (no prefix) stay as-is.
-5. Keep any domain-specific observations that don't overlap (e.g. from the
-   Observability Expert) in a dedicated "Reviewer-Specific Notes" section.
-6. If `PREVIOUS_FINDINGS` was non-empty, add a **Resolved** section listing
+5. If `PREVIOUS_FINDINGS` was non-empty, add a **Resolved** section listing
    previous findings that **no reviewer re-reported** -- these are presumed
    fixed.
 
@@ -280,7 +263,7 @@ Present the final report as:
 ```markdown
 # Review Team Report
 
-Verification: 8 checked, 5 confirmed, 2 refuted (dropped), 1 unsure; 3 unverified (over the cap).
+Verification: 4 Critical checked, 3 confirmed, 1 refuted (dropped); Important and Minor findings are unverified.
 
 <!-- include Resolved section only on re-runs -->
 ## Resolved (fixed since last run)
@@ -294,18 +277,10 @@ Verification: 8 checked, 5 confirmed, 2 refuted (dropped), 1 unsure; 3 unverifie
 - `file:line` [Reviewer1] -- finding
 - `file:line` [EVOLVED] [Reviewer1] -- related to previous finding, changed form
 - `file:line` [UNSURE] [Reviewer2] -- finding (skeptic: depends on runtime config it could not read)
-- `file:line` [unverified] [Reviewer3] -- finding past the verification cap
+- `file:line` [unverified] [Reviewer2] -- Important finding, not sent to the skeptic
 
 ## Minor
 - `file:line` [Reviewer1] -- finding
-
-## Reviewer-Specific Notes
-
-### Observability Expert
-- domain-specific observations
-
-### Architecture
-- system-level observations
 ```
 
 ### Step 5 -- Generate plan
@@ -325,7 +300,7 @@ Example:
 ## Action Plan
 
 - [ ] `file/path.ts:42` (**Critical**, flagged by Reviewer1, Reviewer2): Replace unsafe method with secure alternative to prevent possible crash.
-- [ ] `other/file.js:10-12` (**Important** [PERSISTS], flagged by Reviewer3): Refactor duplicated code into a shared helper function.
+- [ ] `other/file.js:10-12` (**Important** [PERSISTS], flagged by Reviewer2): Refactor duplicated code into a shared helper function.
 ```
 
 `[UNSURE]` and `[unverified]` labels carry through to the action plan too, so
@@ -340,10 +315,9 @@ If there are relevant reviewer-supplied remediation suggestions or links, includ
 
 ---
 
-If ALL sections are empty, report: "No findings -- all reviewers passed."
+If ALL sections are empty, report: "No findings -- both reviewers passed."
 
 ## Gotchas
 
-- Fresh Eyes is only useful blind: one sentence of the PR description in its prompt and it reviews the intent instead of the code.
 - Pasting file contents into every reviewer prompt multiplies the cost by the panel size; pass paths and let reviewers read what their focus needs.
-- The skeptic is capped at 10 findings per run. When more serious findings come back, the panel was asked too broad a question; narrow the scope rather than raising the cap.
+- The skeptic is capped at 10 findings per run. When more Critical findings come back, the panel was asked too broad a question; narrow the scope rather than raising the cap.

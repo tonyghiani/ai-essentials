@@ -85,7 +85,7 @@ Run `./scripts/validate.sh` after edits. It catches broken cross-references, ski
 |------|-------|-------|
 | **Portable** | Most rules and skills | Copy as-is |
 | **Personal voice** | `skills/shared/pr-review-voice-marco.md`, `agents/marco-blogger.md`, `skills/review-pr/`, `skills/review-pr-comments/` | Replace voice file or drop `voice-profile` in skill frontmatter |
-| **Domain-specific** | `agents/esql-expert.md`, `skills/review-team/reviewers/observability-expert.md` | Fork for your stack |
+| **Domain-specific** | `agents/esql-expert.md` | Fork for your stack |
 
 ---
 
@@ -166,7 +166,7 @@ Reusable workflows the agent loads on demand. Each skill lives in its own folder
 | [`resolve-merge-conflicts`](skills/resolve-merge-conflicts/) | "fix the conflicts", "merge main into this branch" | Merges the PR base, resolves conflicts by intent, verifies scoped checks, commits and pushes |
 | [`review-pr`](skills/review-pr/) | "review pr", share a PR URL | Reviews a GitHub PR with copy-pasteable line comments (uses personal voice profile by default) |
 | [`review-pr-comments`](skills/review-pr-comments/) | "should I accept this feedback" | Triages review comments against the PR diff (uses personal voice profile by default) |
-| [`review-team`](skills/review-team/) | "review team", "multi-perspective review" | Runs three to six read-only reviewers in parallel and consolidates findings |
+| [`review-team`](skills/review-team/) | "review team", "multi-perspective review" | Runs two read-only reviewers (adversarial, conventions) in parallel, verifies serious findings and consolidates them |
 | [`web-research`](skills/web-research/) | "research", "look online", "best practices for" | Perspective agents search primary sources in parallel; a citation pass drops claims it cannot trace |
 
 Delivery skills (the delegation system; see [docs/guide.md](docs/guide.md)):
@@ -186,16 +186,12 @@ Delivery skills (the delegation system; see [docs/guide.md](docs/guide.md)):
 
 Specialist skills the tech lead routes to by diff content: [`tdd`](skills/tdd/), [`dep-size`](skills/dep-size/), [`a11y-audit`](skills/a11y-audit/), [`i18n-sweep`](skills/i18n-sweep/), [`react-perf`](skills/react-perf/), [`api-contract-review`](skills/api-contract-review/), [`react-patterns`](skills/react-patterns/), [`marco-code-style`](skills/marco-code-style/).
 
-The review-team panel:
+The review-team panel is always these two:
 
-| Reviewer | Runs | Source |
-|----------|------|--------|
-| Adversarial | always | [`reviewers/adversarial.md`](skills/review-team/reviewers/adversarial.md) |
-| Fresh Eyes | always | [`reviewers/fresh-eyes.md`](skills/review-team/reviewers/fresh-eyes.md) |
-| Conventions | always, on code | the [`convention-checker`](agents/convention-checker.md) agent |
-| Architecture | boundary, API or schema changes | [`reviewers/architecture.md`](skills/review-team/reviewers/architecture.md) |
-| Product Flow | user-visible changes | [`reviewers/product-flow.md`](skills/review-team/reviewers/product-flow.md) |
-| Observability Expert | logging, metrics, tracing, ES\|QL | [`reviewers/observability-expert.md`](skills/review-team/reviewers/observability-expert.md) (Elasticsearch/OTel tuned) |
+| Reviewer | Source |
+|----------|--------|
+| Adversarial | [`reviewers/adversarial.md`](skills/review-team/reviewers/adversarial.md) |
+| Conventions | the [`convention-checker`](agents/convention-checker.md) agent |
 
 Shared assets: [`skills/shared/`](skills/shared/) (e.g. [`pr-review-voice-marco.md`](skills/shared/pr-review-voice-marco.md)).
 

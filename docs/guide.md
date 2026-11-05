@@ -331,7 +331,7 @@ Every skill works in any of the three tools. Say the name or what you want.
 | Resolve merge conflicts | `resolve-merge-conflicts` | Merges the base in (never rebases), resolves by intent, verifies, pushes normally |
 | Review someone's PR | `review-pr <url>` | Copy-pasteable conventional comments in your voice; you post them |
 | Decide whether to accept review feedback | `review-pr-comments` | Triage comment links, drafted replies |
-| A heavy multi-angle review of a branch | `review-team` | Three to six reviewers in parallel, then a `skeptic` that drops findings it can disprove; keep it for large or risky diffs |
+| A heavy multi-angle review of a branch | `review-team` | Two reviewers in parallel (adversarial, conventions), then a `skeptic` that drops Critical findings it can disprove; keep it for large or risky diffs |
 | Prove a change in the running app | `verify-app` | Reuses an instance already running; before and after table against a baseline checkout |
 | Two attempts at a risky task | `best-of-two` | Two `ai-delegate --task` runs and the `judge` agent; twice the cost |
 | Make sure you can defend an agent PR | `/explain-pr` | Short explanation, then a quiz; never marks the PR ready |

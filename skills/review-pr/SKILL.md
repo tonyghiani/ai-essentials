@@ -2,7 +2,7 @@
 name: review-pr
 voice-profile: marco
 description: Review a GitHub pull request by URL using the review-team skill. Outputs copy-pasteable conventional comments with line references and code suggestions. Uses a personal voice profile by default — swap the voice profile in the shared folder for your own. Use when the user shares a PR URL, asks to review a PR, or mentions "review pr".
-effort: high
+effort: medium
 ---
 
 # Review PR
@@ -51,7 +51,7 @@ The checked-out PR branch is the HEAD; the base branch from `PR_META` is the
 comparison target.
 
 The review-team skill handles gathering context, reading reviewer personas,
-launching the reviewers the diff calls for, and consolidating findings into a report.
+launching its two-reviewer panel (Adversarial and Conventions), and consolidating findings into a report.
 
 ### Step 3 — Transform report into conventional comments
 
@@ -109,7 +109,7 @@ so the user can copy the raw markdown in one shot.
 Example:
 
 ````
-📄 **file/path.ts** (line 42) — [Fresh Eyes, Adversarial]
+📄 **file/path.ts** (line 42) — [Adversarial, Conventions]
 
 ```markdown
 suggestion: I honestly think we can simplify this a bit.
