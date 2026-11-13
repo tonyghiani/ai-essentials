@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { keyToFileName, repoKey, repoRoot } from '../lib/repo.mjs';
 import { trustContract } from './contract.mjs';
 import { formatFile } from './format_file.mjs';
+import { recordEdit } from './session_edits.mjs';
 import { registerBranch, specDir } from '../work/branches.mjs';
 import { addTask, passTask } from '../work/tasks.mjs';
 import { MAX_CONSECUTIVE_BLOCKS, MAX_IDENTICAL_FAILURES, runVerify } from './run.mjs';
@@ -137,34 +138,18 @@ describe('runVerify', () => {
     assert.doesNotMatch(result.message, /notes\.md/);
   });
 
-  it('fails a change that only deletes a test file, though no changed file is left to check', () => {
-    mkdirSync(join(ctx.repo, 'src'), { recursive: true });
-    writeFileSync(join(ctx.repo, 'src', 'a.test.ts'), 'expect(1).toBe(1);\n');
+  it('skips in session scope when the session edited nothing, though the branch changed', () => {
+    git(ctx.repo, ['checkout', '-q', '-b', 'feature']);
+    touchSource();
     git(ctx.repo, ['add', '.']);
-    git(ctx.repo, ['commit', '-q', '-m', 'add test']);
-    rmSync(join(ctx.repo, 'src', 'a.test.ts'));
-    writeContract({ checks: [{ name: 'lint', cmd: PASSING_CMD }] });
-    const result = runVerify({ cwd: ctx.repo });
-    assert.equal(result.status, 'fail');
-    assert.match(result.message, /\[test-integrity\] src\/a\.test\.ts: test file deleted/);
-  });
-
-  it('does not blame the session for tests that history deleted between a stale origin and HEAD', () => {
-    mkdirSync(join(ctx.repo, 'src'), { recursive: true });
-    writeFileSync(join(ctx.repo, 'src', 'a.test.ts'), 'expect(1).toBe(1);\n');
-    git(ctx.repo, ['add', '.']);
-    git(ctx.repo, ['commit', '-q', '-m', 'add test']);
-    git(ctx.repo, ['update-ref', 'refs/remotes/origin/main', 'HEAD']);
-    git(ctx.repo, ['symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main']);
-    git(ctx.repo, ['rm', '-q', 'src/a.test.ts']);
-    git(ctx.repo, ['commit', '-q', '-m', 'upstream removed the test']);
+    git(ctx.repo, ['commit', '-q', '-m', 'someone else changed the branch']);
     writeContract({ checks: [{ name: 'lint', cmd: FAILING_CMD }] });
-    const result = runVerify({ cwd: ctx.repo });
+    const result = runVerify({ cwd: ctx.repo, sessionId: 'idle', scope: 'session' });
     assert.equal(result.status, 'skipped');
-    assert.equal(result.message, 'no changed files');
+    assert.equal(result.message, 'this session edited no files');
   });
 
-  it('reports a timed-out check as a failure', () => {
+  it('does not block on a timed-out check, and logs it for ai-checkup', () => {
     touchSource();
     writeContract({
       checks: [
@@ -172,8 +157,10 @@ describe('runVerify', () => {
       ],
     });
     const result = runVerify({ cwd: ctx.repo });
-    assert.equal(result.status, 'fail');
-    assert.match(result.message, /timed out/);
+    assert.equal(result.status, 'skipped');
+    assert.match(result.message, /not verified: \[slow\] timed out/);
+    const log = readFileSync(join(ctx.base, 'state', 'hook-errors.jsonl'), 'utf8');
+    assert.match(log, /\[slow\] timed out/);
   });
 
   it('reports a malformed contract as a failure instead of passing silently', () => {
@@ -318,9 +305,35 @@ describe('stop-hook adapters', () => {
   /** @returns {Record<string, unknown>} */
   function failingSetup() {
     touchSource();
+    recordEdit({ sessionId: 'adapter', cwd: ctx.repo, file: 'src/a.ts' });
     writeContract({ checks: [{ name: 'typecheck', cmd: FAILING_CMD }] });
     return { cwd: ctx.repo, session_id: 'adapter' };
   }
+
+  it('makes the Claude adapter check only the files its session wrote through the edit hook', () => {
+    touchSource();
+    writeFileSync(join(ctx.repo, 'src', 'other.ts'), 'export const b = 2;\n');
+    writeContract({
+      checks: [
+        {
+          name: 'args',
+          cmd: [NODE, '-e', 'console.error(process.argv.slice(1).join("|")); process.exit(1)', '{files}'],
+          when: ['**/*.ts'],
+        },
+      ],
+    });
+    const edit = runAdapter('claude/hooks/format-on-edit.mjs', {
+      cwd: ctx.repo,
+      session_id: 'editor',
+      tool_input: { file_path: join(ctx.repo, 'src', 'a.ts') },
+    });
+    assert.equal(edit.status, 0);
+
+    const result = runAdapter('claude/hooks/verify-on-stop.mjs', { cwd: ctx.repo, session_id: 'editor' });
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /src\/a\.ts/);
+    assert.doesNotMatch(result.stderr, /other\.ts/);
+  });
 
   it('makes the Claude adapter exit 2 with the failure on stderr', () => {
     const result = runAdapter('claude/hooks/verify-on-stop.mjs', failingSetup());

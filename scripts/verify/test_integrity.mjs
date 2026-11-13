@@ -7,6 +7,12 @@
  * Everything is counted net per file (added minus removed lines), so moving or
  * reformatting existing code is not a finding. A suppression with a reason
  * (`eslint-disable-next-line rule -- why`, `@ts-expect-error why`) passes.
+ *
+ * Run by hand (`ai-verify --test-integrity`), not from the Stop hook. It reads
+ * the branch from its fork point, and on a branch that took in upstream commits
+ * or against a stale base it blamed sessions for tests other people deleted.
+ * A deleted test is also often the right call in a refactor, which only a
+ * reader of the diff can tell; the reviewer agent does that read.
  */
 
 import { existsSync, readFileSync, statSync } from 'node:fs';

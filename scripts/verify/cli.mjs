@@ -5,13 +5,17 @@
  *   node scripts/verify/cli.mjs [--cwd <dir>] [--session <id>]
  *   node scripts/verify/cli.mjs --trust [--cwd <dir>]   trust the repo's own .ai/verify.json
  *   node scripts/verify/cli.mjs --where [--cwd <dir>]   print the repo key and contract path
+ *   node scripts/verify/cli.mjs --test-integrity [--cwd <dir>]  report tests the branch deleted, skipped or weakened
  *   node scripts/verify/cli.mjs --worktree-copy [--cwd <dir>]   print the files a new worktree needs, one per line
  *   node scripts/verify/cli.mjs --worktree-setup [--cwd <dir>]  run the contract's worktree.setup commands in <dir>
  *   node scripts/verify/cli.mjs --app-status [--cwd <dir>]      JSON: is the app up, and which checkout serves it
  *   node scripts/verify/cli.mjs --app-start [--force-new --port <n>] [--cwd <dir>]  JSON: start this checkout's app
  *   node scripts/verify/cli.mjs --app-stop [--cwd <dir>]        JSON: stop the instance --app-start started
  *
- * Exit 0 for pass or skipped, 1 for fail or escalate. The app flags exit 1 when
+ * A run without a flag checks every file that differs from the default branch;
+ * the Stop hook checks only the files its session edited.
+ *
+ * Exit 0 for pass or skipped, 1 for fail or escalate. --test-integrity exits 1 when it finds something. The app flags exit 1 when
  * the app is not configured, a start is refused or fails, or there is nothing to stop.
  */
 
@@ -22,6 +26,7 @@ import { keyToFileName, repoKey, repoRoot } from '../lib/repo.mjs';
 import { appStart, appStatus, appStop } from './app.mjs';
 import { contractsDir, resolveContract, trustContract } from './contract.mjs';
 import { runVerify } from './run.mjs';
+import { testIntegrityFailure } from './test_integrity.mjs';
 
 /**
  * @param {string} flag
@@ -104,6 +109,17 @@ if (process.argv.includes('--where')) {
     `${JSON.stringify({ repoKey: repoKey(root), contract: resolved.status, path: resolved.status === 'none' ? target : resolved.path, createAt: target }, null, 2)}\n`,
   );
   process.exit(0);
+}
+
+if (process.argv.includes('--test-integrity')) {
+  const root = repoRoot(cwd);
+  if (root === null) {
+    process.stderr.write('Not inside a git repository.\n');
+    process.exit(1);
+  }
+  const failure = testIntegrityFailure(root);
+  process.stdout.write(failure === null ? 'No weakened tests found.\n' : `${failure.detail}\n`);
+  process.exit(failure === null ? 0 : 1);
 }
 
 if (process.argv.includes('--trust')) {

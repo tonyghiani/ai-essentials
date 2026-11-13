@@ -47,7 +47,7 @@ Run the project's typecheck, linter, and test suite scoped to the changed files.
 
 If a check fails, say so and show the output. If you skipped one, say which and why. "Should work" is not a result. Never silence a failure by deleting, skipping, or `@ts-expect-error`-ing it.
 
-Report evidence, not assertions: the exact command and the tail of its output for each check. Take the commands from the repo's verification contract (`ai-verify --where`), then the repo's own scripts; if neither names one, ask once and offer the `verify-contract` skill. A Stop hook may run the contract and block your turn on failure: fix the cause, and after three identical failures stop and report the blocker. Details: the evidence rule.
+Report evidence, not assertions: the exact command and the tail of its output for each check. Take the commands from the repo's verification contract (`ai-verify --where`), then the repo's own scripts; if neither names one, ask once and offer the `verify-contract` skill. A Stop hook runs the contract on the files you wrote with Edit or Write and blocks your turn when a check fails: fix the cause, and after three identical failures stop and report the blocker. It does not see edits made through shell commands; run `ai-verify` yourself after those. Details: the evidence rule.
 
 ## Cost
 

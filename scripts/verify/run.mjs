@@ -4,13 +4,21 @@
  * tool's protocol; all decisions live here.
  *
  * Statuses:
- *   skipped   nothing to verify (no repo, no contract, no changed files) or the
- *             run is deliberately allowed to end
+ *   skipped   nothing to verify (no repo, no contract, no changed files), a check
+ *             could not run, or the run is deliberately allowed to end
  *   pass      every check that applied succeeded
  *   fail      at least one check failed; the agent should fix and retry
  *   escalate  the same failure repeated; the agent must stop and report it
  *
- * @typedef {{ name: string, detail: string }} IFailure
+ * Only a check that ran and failed blocks. A timeout, a command that could not
+ * start or a spent budget is the gate's own problem, which the agent cannot fix
+ * by editing code: it is logged for ai-checkup and the turn ends unverified.
+ *
+ * @typedef {{ name: string, detail: string, blocking?: boolean }} IFailure
+ *   `blocking: false` marks a check that could not run, as opposed to one that failed.
+ * @typedef {'session' | 'branch'} IScope
+ *   `session` checks only the files this session wrote through its edit tools (the Stop hook);
+ *   `branch` checks everything that differs from the default branch (a run by hand).
  * @typedef {{ status: 'skipped' | 'pass' | 'fail' | 'escalate', message: string, failures: IFailure[] }} IVerifyResult
  */
 
@@ -19,12 +27,13 @@ import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { matchesAny } from '../lib/glob.mjs';
+import { logHookError } from '../lib/hook_io.mjs';
 import { changedFiles, repoKey, repoRoot } from '../lib/repo.mjs';
 import { appendJsonl, updateJson } from '../lib/state.mjs';
 import { currentBranch, isAgentBranch, specDir } from '../work/branches.mjs';
 import { ledgerEnforced, ledgerGaps } from '../work/tasks.mjs';
 import { resolveContract } from './contract.mjs';
-import { testIntegrityFailure } from './test_integrity.mjs';
+import { sessionEdits } from './session_edits.mjs';
 
 /** Identical failures in a row before the agent is told to stop retrying. */
 export const MAX_IDENTICAL_FAILURES = 3;
@@ -97,7 +106,11 @@ function runCheck(check, { root, changed, remainingSec }) {
     return null;
   }
   if (remainingSec <= 0) {
-    return { name: check.name, detail: `not run: the ${VERIFY_BUDGET_SEC}s verification budget was spent on earlier checks; scope or speed them up in the contract` };
+    return {
+      name: check.name,
+      detail: `not run: the ${VERIFY_BUDGET_SEC}s verification budget was spent on earlier checks; scope or speed them up in the contract`,
+      blocking: false,
+    };
   }
   const timeoutSec = Math.min(check.timeoutSec ?? DEFAULT_CHECK_TIMEOUT_SEC, remainingSec);
   const [file, ...args] = argv;
@@ -112,6 +125,7 @@ function runCheck(check, { root, changed, remainingSec }) {
     return {
       name: check.name,
       detail: timedOut ? `timed out after ${Math.round(timeoutSec)}s` : `could not run: ${result.error.message}`,
+      blocking: false,
     };
   }
   if (result.status === 0) {
@@ -174,9 +188,10 @@ function clearFailures(sessionId) {
 
 /**
  * @param {string} root
+ * @param {{ scope: IScope, sessionId: string }} options
  * @returns {{ status: 'ran', failures: IFailure[] } | { status: 'skipped', message: string }}
  */
-function runContractChecks(root) {
+function runContractChecks(root, { scope, sessionId }) {
   const resolved = resolveContract(root);
   if (resolved.status === 'none') {
     return { status: 'skipped', message: 'no verification contract for this repo' };
@@ -187,12 +202,9 @@ function runContractChecks(root) {
   if (resolved.status === 'invalid') {
     return { status: 'ran', failures: [{ name: 'contract', detail: `${resolved.path}: ${resolved.reason}` }] };
   }
-  const changed = changedFiles(root);
-  // Read before the empty check: changedFiles drops deleted files, so a change that only deletes a
-  // test would otherwise look like no change at all.
-  const integrity = resolved.contract.testIntegrity === false ? null : testIntegrityFailure(root);
+  const changed = scope === 'session' ? sessionEdits({ sessionId, root }) : changedFiles(root);
   if (changed.length === 0) {
-    return integrity === null ? { status: 'skipped', message: 'no changed files' } : { status: 'ran', failures: [integrity] };
+    return { status: 'skipped', message: scope === 'session' ? 'this session edited no files' : 'no changed files' };
   }
   // A loop, not flatMap: each check's timeout depends on the time the earlier ones used.
   const startedAt = Date.now();
@@ -204,7 +216,7 @@ function runContractChecks(root) {
       failures.push(failure);
     }
   }
-  return { status: 'ran', failures: integrity === null ? failures : [...failures, integrity] };
+  return { status: 'ran', failures };
 }
 
 /**
@@ -254,23 +266,32 @@ function formatFailures(failures) {
 }
 
 /**
- * @param {{ cwd: string, sessionId?: string }} options
+ * @param {{ cwd: string, sessionId?: string, scope?: IScope }} options
  * @returns {IVerifyResult}
  */
-export function runVerify({ cwd, sessionId = 'default' }) {
+export function runVerify({ cwd, sessionId = 'default', scope = 'branch' }) {
   const root = repoRoot(cwd);
   if (root === null) {
     return { status: 'skipped', message: 'not inside a git repository', failures: [] };
   }
 
-  const checked = runContractChecks(root);
+  const checked = runContractChecks(root, { scope, sessionId });
   // The ledger is checked even when there is no contract or nothing changed: an unattended run that
   // stops with tasks still open has not finished, whatever the checks say.
   const ledger = ledgerFailure(root);
-  const failures = [...(checked.status === 'ran' ? checked.failures : []), ...(ledger === null ? [] : [ledger])];
+  const all = [...(checked.status === 'ran' ? checked.failures : []), ...(ledger === null ? [] : [ledger])];
+  const unverified = all.filter((failure) => failure.blocking === false);
+  const failures = all.filter((failure) => failure.blocking !== false);
+  for (const failure of unverified) {
+    logHookError('verify', new Error(`${repoKey(root)}: [${failure.name}] ${failure.detail}`));
+  }
 
   if (failures.length === 0) {
     clearFailures(sessionId);
+    if (unverified.length > 0) {
+      const list = unverified.map((failure) => `[${failure.name}] ${failure.detail}`).join('; ');
+      return { status: 'skipped', message: `not verified: ${list}`, failures: [] };
+    }
     return checked.status === 'ran'
       ? { status: 'pass', message: 'all checks passed', failures: [] }
       : { status: 'skipped', message: checked.message, failures: [] };
