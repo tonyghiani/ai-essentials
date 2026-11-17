@@ -16,12 +16,15 @@ describe('templateProblems', () => {
     assert.deepEqual(templateProblems(DESCRIPTION), []);
   });
 
-  it('reports headings written without their icons and a missing title line', () => {
+  it('reports a heading written without its icon and a missing title line', () => {
     assert.deepEqual(templateProblems('## Summary\nx\n\n## Testing\n- y\n'), [
       'a leading "> <title>" line',
       '"## 📓 Summary"',
-      '"## 🧪 Testing"',
     ]);
+  });
+
+  it('accepts a body with no testing section', () => {
+    assert.deepEqual(templateProblems('> Fix the retry loop\n\n## 📓 Summary\nBacks off between attempts.\n'), []);
   });
 });
 

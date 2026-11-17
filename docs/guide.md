@@ -170,8 +170,8 @@ Without a ticket, the PR body says what the change does and why, and links nothi
    edge-case tests, correctness gaps; not style). A read-only `convention-checker` agent checks your
    style rules. Specialists run when the diff calls for them: `dep-size`, `a11y-audit`, `i18n-sweep`,
    `react-perf`, `api-contract-review`. At most two review rounds.
-7. **Hand-off.** It writes the description (`pr-description-template`). A script then checks the PR body against the template (title line, `## 📓 Summary`, `## 🧪 Testing`). The guard refuses to open
-   a PR from the agent's branch without those headings, so it cannot be skipped. It then audits commits and body for tool credit, pushes the branch,
+7. **Hand-off.** It writes the description (`pr-description-template`). A script then checks the PR body against the template (title line and `## 📓 Summary`; `## 🧪 Testing` is optional). The guard refuses to open
+   a PR from the agent's branch without the summary heading, so it cannot be skipped. It then audits commits and body for tool credit, pushes the branch,
    opens a **draft** PR, and reports: what changed, the commands it ran and
    their output, follow-ups it noticed but did not do or file.
 

@@ -2,7 +2,7 @@
 /**
  * Validate and stage the body of a draft PR. The body is the description written
  * with the pr-description-template skill, unchanged; this refuses one that drifted
- * from the template (missing heading icons, missing sections).
+ * from the template (missing heading icon, missing summary).
  *
  *   node scripts/work/pr_body.mjs [--cwd <dir>] [--description <file>] [--out <file>]
  *   node scripts/work/pr_body.mjs --check <file>
@@ -22,8 +22,8 @@ import { pathToFileURL } from 'node:url';
 import { repoRoot } from '../lib/repo.mjs';
 import { currentBranch, specDir } from './branches.mjs';
 
-/** Headings the pr-description-template skill requires, icons included. */
-export const TEMPLATE_HEADINGS = ['## 📓 Summary', '## 🧪 Testing'];
+/** Headings the pr-description-template skill requires, icons included. Testing is optional and not checked. */
+export const TEMPLATE_HEADINGS = ['## 📓 Summary'];
 
 /**
  * @param {string} text

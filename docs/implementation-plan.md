@@ -40,7 +40,7 @@ Four things were wrong and are fixed:
   padding; zero tests is a valid answer, stated with a reason. Wired into `tdd`, `deliver`, `grill-me`, the `reviewer` agent (flags
   offending tests as findings), the global instructions, and five new evals including one capped at a number of added tests.
 - **The PR body always follows `pr-description-template`.** It used to depend on the agent remembering the template. Now
-  `scripts/work/pr_body.mjs` validates the description (title line, `## 📓 Summary`, `## 🧪 Testing`), `open-draft-pr` runs it and
+  `scripts/work/pr_body.mjs` validates the description (title line and `## 📓 Summary`; Testing is optional), `open-draft-pr` runs it and
   checks it, and the guard refuses a PR from an agent branch whose body lacks the template headings. There is no
   "decisions" section in the PR body, by decision.
 - **ai-essentials is no longer in your daily path.** Worktrees are created beside the repo (`<repo>.worktrees/<slug>`, or

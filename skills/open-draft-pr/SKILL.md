@@ -43,7 +43,7 @@ ai-work task list || true
   ai-pr-body
   ```
 
-  It refuses a description that drifted from the template (missing title line, missing `## 📓 Summary` or `## 🧪 Testing`) and writes `pr-body.md`. Never open the PR from a body that did not pass: the guard refuses it from an agent branch whose body lacks the template headings. Add no other section.
+  It refuses a description that drifted from the template (missing title line or missing `## 📓 Summary`) and writes `pr-body.md`. Never open the PR from a body that did not pass: the guard refuses it from an agent branch whose body lacks the summary heading. `## 🧪 Testing` is optional. Add no other section.
 
 ### 2. Audit
 

@@ -991,6 +991,6 @@ printf '> Fix the label typo
 Corrects the Save button label.
 ' > ${SPEC_DIR}/pr-body.md`.replaceAll('${COMMIT}', COMMIT).replaceAll('${SPEC_DIR}', SPEC_DIR),
     },
-    expect: { committed: true, specFileContains: [{ file: 'pr-body.md', regex: '^## 🧪 Testing$' }] },
+    expect: { committed: true, specFileContains: [{ file: 'pr-body.md', regex: '^## 📓 Summary$' }] },
   },
 ];
