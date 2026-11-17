@@ -1,6 +1,6 @@
 ---
 name: pr-description-template
-description: Writes pull request description text from a fixed template with a concise title, a plain-language summary of the problem and the approach, and an optional testing section of reproduction steps. Returns text only; opening the PR is open-draft-pr's job. Use when the user asks to write a PR description, PR body or pull request summary.
+description: Writes pull request description text from a fixed template that starts with a plain-language summary of the problem and the approach, and an optional testing section of reproduction steps. Returns text only; opening the PR is open-draft-pr's job. Use when the user asks to write a PR description, PR body or pull request summary.
 effort: low
 ---
 # PR Description Template
@@ -16,7 +16,7 @@ Use this skill when the user asks for:
 
 Always follow these rules:
 - Keep heading icons as part of the heading text (example: `## 📓 Summary`, `## 🧪 Testing`).
-- Keep the title concise and focused on the main change.
+- The body starts directly with `## 📓 Summary`. It has no title line; the caller passes the title separately when it opens the PR.
 - The summary explains the problem and the approach in plain language. It never lists the code changes: the diff already does that.
 - The testing section is optional. Include it only when the reviewer can do something concrete to see the change.
 
@@ -25,8 +25,6 @@ Always follow these rules:
 Use this structure:
 
 ```markdown
-> <concise PR title summarizing the main change>
-
 ## 📓 Summary
 <The problem, in a few plain sentences: who hits it, what they see, why it matters.>
 
@@ -62,8 +60,6 @@ Return only the formatted PR description text. Do not offer to create the PR, ru
 ## Example
 
 ```markdown
-> Retry payment webhooks that fail on a network timeout
-
 ## 📓 Summary
 When our payment provider's endpoint was slow to answer, the webhook call timed out and we gave up on the first try. The customer had paid, but the order stayed "pending" until someone replayed the event by hand.
 
@@ -77,7 +73,7 @@ We now retry a timed-out call a few times, waiting a little longer between attem
 
 ## Template headings
 
-Whoever calls this skill (including `tech-lead` and `open-draft-pr`), the output is the template above and nothing else: the `> title` line, `## 📓 Summary`, and `## 🧪 Testing` when it applies, with the icons. Add no other section. `ai-pr-body` rejects a body without the title line or the summary heading.
+Whoever calls this skill (including `tech-lead` and `open-draft-pr`), the output is the template above and nothing else: `## 📓 Summary`, and `## 🧪 Testing` when it applies, with the icons. Add no other section. `ai-pr-body` rejects a body that does not start with the summary heading, including one that still opens with a `> title` line.
 
 ## Attribution
 

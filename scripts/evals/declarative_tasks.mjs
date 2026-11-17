@@ -974,9 +974,7 @@ ${COMMIT} "Greet by time of day"`.replace('${COMMIT}', COMMIT),
     solutions: {
       good: String.raw`perl -pi -e 's/Savee/Save/' label.js
 ${COMMIT} "Fix the label typo"
-printf '> Fix the label typo
-
-## 📓 Summary
+printf '## 📓 Summary
 Corrects the Save button label.
 
 ## 🧪 Testing
@@ -985,9 +983,7 @@ Corrects the Save button label.
 node "$AI_ESSENTIALS_REPO/scripts/work/pr_body.mjs"`.replaceAll('${COMMIT}', COMMIT).replaceAll('${SPEC_DIR}', SPEC_DIR),
       bad: String.raw`perl -pi -e 's/Savee/Save/' label.js
 ${COMMIT} "Fix the label typo"
-printf '> Fix the label typo
-
-## Summary
+printf '## Summary
 Corrects the Save button label.
 ' > ${SPEC_DIR}/pr-body.md`.replaceAll('${COMMIT}', COMMIT).replaceAll('${SPEC_DIR}', SPEC_DIR),
     },

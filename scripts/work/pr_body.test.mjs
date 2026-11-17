@@ -9,22 +9,23 @@ import { createBranch } from './branches.mjs';
 import { templateProblems } from './pr_body.mjs';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), 'pr_body.mjs');
-const DESCRIPTION = '> Fix the retry loop\n\n## 📓 Summary\nBacks off between attempts.\n\n## 🧪 Testing\n- Run the executor against a failing endpoint.\n';
+const DESCRIPTION = '## 📓 Summary\nBacks off between attempts.\n\n## 🧪 Testing\n- Run the executor against a failing endpoint.\n';
 
 describe('templateProblems', () => {
   it('accepts a body that follows the template', () => {
     assert.deepEqual(templateProblems(DESCRIPTION), []);
   });
 
-  it('reports a heading written without its icon and a missing title line', () => {
-    assert.deepEqual(templateProblems('## Summary\nx\n\n## Testing\n- y\n'), [
-      'a leading "> <title>" line',
-      '"## 📓 Summary"',
-    ]);
+  it('reports a heading written without its icon', () => {
+    assert.deepEqual(templateProblems('## Summary\nx\n\n## Testing\n- y\n'), ['"## 📓 Summary"']);
+  });
+
+  it('reports a leftover title line above the summary', () => {
+    assert.deepEqual(templateProblems('> Fix the retry loop\n\n## 📓 Summary\nx\n'), ['"## 📓 Summary" as the first line']);
   });
 
   it('accepts a body with no testing section', () => {
-    assert.deepEqual(templateProblems('> Fix the retry loop\n\n## 📓 Summary\nBacks off between attempts.\n'), []);
+    assert.deepEqual(templateProblems('## 📓 Summary\nBacks off between attempts.\n'), []);
   });
 });
 
@@ -85,7 +86,7 @@ describe('pr_body cli', () => {
 
   it('fails --check on a body without the icons and passes one that follows the template', () => {
     const bare = join(ctx.base, 'bare.md');
-    writeFileSync(bare, '> t\n\n## Summary\nx\n\n## Testing\n- y\n');
+    writeFileSync(bare, '## Summary\nx\n\n## Testing\n- y\n');
     assert.notEqual(run(['--check', bare]).status, 0);
     const full = join(ctx.base, 'full.md');
     writeFileSync(full, DESCRIPTION);

@@ -389,7 +389,7 @@ describe('PR body on an agent branch', () => {
   });
 
   it('allows a draft PR whose body file follows the template', () => {
-    writeFileSync(join(ctx.repo, 'body.md'), '> Fix it\n\n## 📓 Summary\nFixes it.\n\n## 🧪 Testing\n- Run it.\n');
+    writeFileSync(join(ctx.repo, 'body.md'), '## 📓 Summary\nFixes it.\n\n## 🧪 Testing\n- Run it.\n');
     assert.equal(verdict('gh pr create --draft --title t --body-file body.md').allow, true);
   });
 

@@ -2,7 +2,7 @@
 /**
  * Validate and stage the body of a draft PR. The body is the description written
  * with the pr-description-template skill, unchanged; this refuses one that drifted
- * from the template (missing heading icon, missing summary).
+ * from the template (no summary heading, or something above it).
  *
  *   node scripts/work/pr_body.mjs [--cwd <dir>] [--description <file>] [--out <file>]
  *   node scripts/work/pr_body.mjs --check <file>
@@ -32,8 +32,11 @@ export const TEMPLATE_HEADINGS = ['## 📓 Summary'];
 export function templateProblems(text) {
   const lines = text.split('\n').map((line) => line.trim());
   const firstLine = lines.find((line) => line !== '') ?? '';
-  const missing = TEMPLATE_HEADINGS.filter((heading) => !lines.includes(heading)).map((heading) => `"${heading}"`);
-  return firstLine.startsWith('> ') ? missing : ['a leading "> <title>" line', ...missing];
+  const [summary] = TEMPLATE_HEADINGS;
+  if (firstLine === summary) {
+    return [];
+  }
+  return [lines.includes(summary) ? `"${summary}" as the first line` : `"${summary}"`];
 }
 
 /**
