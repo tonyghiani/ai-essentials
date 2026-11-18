@@ -1,13 +1,15 @@
 ---
 name: review-pr-comments
 voice-profile: marco
-description: Triage PR review comments — decide whether to accept or push back on each one. Given comment links from a GitHub PR, fetches comment content and PR diff, then reasons about each comment in context. Uses a personal voice profile for suggested replies — swap the voice profile in the shared folder for your own. Use when the user shares PR comment links, asks "should I accept this feedback", or wants help responding to PR review comments.
+description: Triage PR review comments, then act on the verdicts without waiting. Given comment links from a GitHub PR, decides accept or push back on each, implements the accepted ones, verifies, commits and pushes, posts the replies and resolves the threads it addressed. Uses a personal voice profile for replies; swap the voice profile in the shared folder for your own. Use when the user shares PR comment links, asks "should I accept this feedback", or wants to respond to PR review comments.
 ---
 
 # Review PR Comments
 
-Analyze review comments on a GitHub PR and recommend whether to **accept**
-or **push back** on each one, with reasoning grounded in the actual diff.
+Analyze review comments on a GitHub PR, decide whether to **accept** or
+**push back** on each one with reasoning grounded in the actual diff, then
+carry the verdicts through: implement, verify, commit, push, reply, resolve.
+The user does not need to ask for the second half; triage alone is not done.
 
 ## Path resolution
 
@@ -84,8 +86,8 @@ For each comment, output a verdict block:
 
 [2-4 sentence reasoning explaining why, referencing the actual code]
 
-**Suggested reply:**
-> [Draft reply using ../shared/pr-review-voice-marco.md — or your own voice profile.]
+**Reply (posted after the fixes land):**
+> [Reply using ../shared/pr-review-voice-marco.md — or your own voice profile.]
 ```
 
 ### Verdict guidelines
@@ -111,11 +113,61 @@ Lean toward pushing back when:
 
 Read and follow `../shared/pr-review-voice-marco.md`.
 
-### End with a summary
+### Summary line
 
 ```
 **Summary**: X comments analyzed — Y accept, Z push back, W compromise
 ```
+
+Print the verdicts and this line, then go straight to the next section. Do not stop to ask for approval.
+
+## Act on the verdicts
+
+Runs right after triage, in the same turn. The comments sit on the user's own PR, so the commits and replies go out under their own `gh` login and git identity, with no tool credit anywhere (the no-tool-credit rule applies to commit messages and reply text).
+
+Stop and ask instead of acting only when one of these holds:
+
+- The PR's head branch is not checked out locally and no worktree for it can be made without touching the user's uncommitted work.
+- The working tree has uncommitted changes unrelated to the PR.
+- A verdict is Compromise and the middle ground is a design choice the reviewer or the user has to make, not a mechanical change.
+- The head branch is a default branch, or the update would need a force push.
+
+### A. Implement
+
+Check out the PR's head branch (`gh pr checkout $PR_NUMBER`, or a worktree beside the repo). Implement every Accept and Compromise comment, smallest change that satisfies the reviewer. Follow the repo's conventions and the matching style rules. Do not widen scope beyond what the comments ask.
+
+### B. Verify
+
+Run the repo's verification contract scoped to the files you touched (`ai-verify`), plus the tests that cover them. A comment that turns out wrong once you are in the code is re-labelled Push back, not forced through. Show the command and the tail of its output.
+
+### C. Commit and push
+
+One commit per comment or per tight group of comments, plain messages, nothing amended or rebased. Push the PR branch by its own name, never forced. Remember each commit's short SHA for the replies.
+
+### D. Reply
+
+Post one reply per comment, in the voice from `../shared/pr-review-voice-marco.md`:
+
+```bash
+gh api repos/$OWNER/$REPO/pulls/$PR_NUMBER/comments/$COMMENT_ID/replies -f body="<reply>"
+```
+
+Reply to the root comment of a thread, not to a reply inside it. Accept and Compromise replies name the commit that fixed it. Push back replies state the reasoning and stop; they do not push the reviewer to agree.
+
+### E. Resolve
+
+Resolve the thread of every Accept and Compromise comment once its fix is pushed and its reply is posted. Leave Push back threads open: the reviewer decides whether the reasoning holds. Find the thread ids, then resolve:
+
+```bash
+gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{id isResolved comments(first:1){nodes{databaseId}}}}}}}' -F o=$OWNER -F r=$REPO -F n=$PR_NUMBER
+gh api graphql -f query='mutation($t:ID!){resolveReviewThread(input:{threadId:$t}){thread{isResolved}}}' -f t=<thread id>
+```
+
+Match a thread to a comment by the first comment's `databaseId`. Skip threads already resolved.
+
+### Final report
+
+Per comment: verdict, commit SHA or "no change", reply posted, thread resolved or left open. Then the verification evidence and any lessons recorded.
 
 ## Record the lesson (the agent's own PRs)
 
@@ -139,7 +191,7 @@ Pick the route by how the rule behaves:
 | A preference with exceptions tied to one project or area | `memory` |
 | A failure class worth catching automatically next time | `eval` |
 
-Say which lessons you recorded in the summary. `memory-distill` turns them into changes later; this skill only records.
+Record before replying, and say which lessons you recorded in the final report. `memory-distill` turns them into changes later; this skill only records.
 
 ## Edge cases
 
@@ -148,3 +200,5 @@ Say which lessons you recorded in the summary. `memory-distill` turns them into 
 - **Comment threads:** read the full thread before rendering a verdict.
 - **No comment links given, just a PR URL:** fetch all pending review
   comments and analyze them all.
+- **A comment already answered:** if the user's login replied after the reviewer's last comment in the thread, skip it.
+- **`gh api` is not allowed in the session:** do the work up to the push, then print the replies and the resolve commands for the user to run, and say why.

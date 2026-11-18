@@ -284,7 +284,7 @@ that names a specific repo's command is a defect.
 | `react-perf`, `a11y-audit`, `i18n-sweep`, `dep-size`, `api-contract-review` | Specialist checks the tech lead triggers by diff content: new dependency, interactive UI, user-facing strings, render-heavy components, route or contract changes | Add a "when the tech lead invokes you" note; `api-contract-review` also marks the change as always-ask |
 | `branch-refactor-planner` | Optional cleanup pass after checks are green | No change |
 | `review-team` | Pre-merge review on large diffs, not the inner loop | Select reviewers by diff content (skip `observability-expert` when no observability code is touched); add "when not to use" |
-| `review-pr`, `review-pr-comments` | Reviewing others' PRs; triaging comments on yours. Drafts comments for you to post | No change to flow; add a pointer to the no-attribution rule |
+| `review-pr`, `review-pr-comments` | Reviewing others' PRs (drafts for you to post); comments on yours are triaged, implemented, pushed, answered and resolved without a second prompt | `review-pr-comments` gained an act phase; pointer to the no-attribution rule |
 | `pr-description-template` | Writes the PR body text only | Add the no-attribution rule; no PR creation, as today |
 | `gh-issue-writer` | Drafts follow-up issues the tech lead finds out of scope; never creates them | Add the no-attribution rule |
 | `resolve-merge-conflicts` | Called by the PR babysitter and on request | Replace the project-specific type-check command with "the repo's contract or its own type-check script, scoped"; keep its no-attribution commit rule; its push is limited to the branch the agent created |

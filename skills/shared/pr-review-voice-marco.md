@@ -20,7 +20,7 @@ for your own voice profile, or delete the reference and use neutral peer tone.
 - "I found myself"
 - "I honestly think"
 
-## Suggested replies (review-pr-comments)
+## Replies (review-pr-comments, posted as written)
 
 - **Accept:** acknowledge the point and briefly state the fix
 - **Push back:** explain the reasoning respectfully with evidence

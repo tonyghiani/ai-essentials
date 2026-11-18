@@ -165,7 +165,7 @@ Reusable workflows the agent loads on demand. Each skill lives in its own folder
 | [`pr-description-template`](skills/pr-description-template/) | "write a PR description" | PR body text from a fixed template; never opens the PR |
 | [`resolve-merge-conflicts`](skills/resolve-merge-conflicts/) | "fix the conflicts", "merge main into this branch" | Merges the PR base, resolves conflicts by intent, verifies scoped checks, commits and pushes |
 | [`review-pr`](skills/review-pr/) | "review pr", share a PR URL | Reviews a GitHub PR with copy-pasteable line comments (uses personal voice profile by default) |
-| [`review-pr-comments`](skills/review-pr-comments/) | "should I accept this feedback" | Triages review comments against the PR diff (uses personal voice profile by default) |
+| [`review-pr-comments`](skills/review-pr-comments/) | "should I accept this feedback" | Triages review comments against the PR diff, implements the accepted ones, pushes, replies and resolves their threads (uses personal voice profile by default) |
 | [`review-team`](skills/review-team/) | "review team", "multi-perspective review" | Runs two read-only reviewers (adversarial, conventions) in parallel, verifies serious findings and consolidates them |
 | [`web-research`](skills/web-research/) | "research", "look online", "best practices for" | Perspective agents search primary sources in parallel; a citation pass drops claims it cannot trace |
 

@@ -330,7 +330,7 @@ Every skill works in any of the three tools. Say the name or what you want.
 | Watch a draft PR's CI | `ci-babysit` | One bounded round; see below |
 | Resolve merge conflicts | `resolve-merge-conflicts` | Merges the base in (never rebases), resolves by intent, verifies, pushes normally |
 | Review someone's PR | `review-pr <url>` | Copy-pasteable conventional comments in your voice; you post them |
-| Decide whether to accept review feedback | `review-pr-comments` | Triage comment links, drafted replies |
+| Decide whether to accept review feedback | `review-pr-comments` | Triages comment links, then implements the accepted ones, pushes, replies and resolves their threads |
 | A heavy multi-angle review of a branch | `review-team` | Two reviewers in parallel (adversarial, conventions), then a `skeptic` that drops Critical findings it can disprove; keep it for large or risky diffs |
 | Prove a change in the running app | `verify-app` | Reuses an instance already running; before and after table against a baseline checkout |
 | Two attempts at a risky task | `best-of-two` | Two `ai-delegate --task` runs and the `judge` agent; twice the cost |
@@ -399,14 +399,16 @@ the migration is wrong) and put it in the contract.
 
 In Claude Code, from the PR's branch: `/loop 15m run the ci-babysit skill on this PR`. Each round reads
 CI, fixes red checks on the agent's branch and pushes normally, merges the base in on conflicts, and
-**drafts replies to review comments for you without posting them**. It stops itself after repeated
+**handles review comments with `review-pr-comments`: implements the accepted ones, replies and resolves them**. It stops itself after repeated
 failures and tells you when to stop the loop. It runs with your own `gh` login, never from a cloud routine.
 
 ### Someone's PR needs a review
 
 `/review-pr https://github.com/org/repo/pull/123`. You get comments with line references and
 suggestions in your voice. Post the ones you agree with. For comments on your own PR,
-`/review-pr-comments <comment links>` triages accept or push back.
+`/review-pr-comments <comment links>` triages accept or push back, then implements the accepted
+comments, verifies, commits and pushes, replies in your voice and resolves those threads. Push back
+threads stay open for the reviewer. No second prompt needed.
 
 ### Conflicts with the base branch
 

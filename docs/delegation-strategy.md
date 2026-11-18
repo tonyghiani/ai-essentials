@@ -69,7 +69,7 @@ one task. Inside a task, use a subagent only for a fresh reviewer, noisy output,
 | `skills/branch-refactor-planner` | Optional cleanup pass after green | None |
 | `skills/pr-description-template` | Final stage, output text only | None; `gh pr create` stays an ask-rule |
 | `skills/resolve-merge-conflicts` | Called by the CI/PR babysitter loop | Note that its push step is allowed only when the user invoked it |
-| `skills/review-pr`, `review-pr-comments` | Reviewing others' PRs and triaging comments on mine | None |
+| `skills/review-pr`, `review-pr-comments` | Reviewing others' PRs; handling comments on mine end to end (implement, push, reply, resolve) | None |
 | `skills/memory-distill` | Learning loop | Read a second signal source (failed checks) and route each theme to the right place: memory, CLAUDE.md line, hook, or skill edit |
 | `claude/hooks/log-correction-signal.mjs` | Signal source 1 (corrections) | None; sets the style for new hooks (fail open, zero tokens, JSDoc header) |
 | `claude/CLAUDE.md` (74 lines) | Always-on rules | Add the evidence rule and the verification-contract pointer. Size is fine against the 200-line guidance |

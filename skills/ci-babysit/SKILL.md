@@ -1,6 +1,6 @@
 ---
 name: ci-babysit
-description: One round of watching a draft PR the agent opened: read CI status, fix red checks on the agent's own branch, merge the base in when it conflicts, and report review comments as drafts for the user. Built to run under /loop. Never merges, never marks ready, never replies on the user's behalf. Use when the user says "babysit this PR", "watch CI", "fix the red build on my draft PR".
+description: One round of watching a draft PR the agent opened: read CI status, fix red checks on the agent's own branch, merge the base in when it conflicts, and handle review comments with the review-pr-comments flow. Built to run under /loop. Never merges, never marks ready. Use when the user says "babysit this PR", "watch CI", "fix the red build on my draft PR".
 effort: low
 ---
 
@@ -16,7 +16,7 @@ This skill calls `ai-work` and `ai-verify`. If a command is not found, tell the 
 
 - Only branches this tool created: `ai-work is-agent-branch <branch>`. Anything else: report and stop.
 - Never merge, never mark ready, never force push, never push to a default branch.
-- Never post a comment or review. Review comments become drafts in your report.
+- Never post a top-level comment or a review. Replies to existing review threads come only from the `review-pr-comments` flow.
 - At most 3 fix attempts per round. At most 2 rounds on the same failure; then stop and report it. Each round starts with no memory of the last, so keep the count in `<spec-dir>/babysit.json` (`ai-work spec-dir` prints the directory): `{ "<check name>": { "rounds": <n>, "failure": "<first error line>" } }`. Read it in step 1; after step 2, increment `rounds` for a check that failed with the same first error line again, set it to 1 for a new failure, and delete the entry for a check that is green.
 - Same rule as everywhere: no tool credit in commits or text (the no-tool-credit rule).
 
@@ -48,7 +48,7 @@ gh pr view --comments
 gh api repos/{owner}/{repo}/pulls/<number>/comments
 ```
 
-Do not answer them. List each new comment with the file and line, your reading of the ask, whether you would accept it, and a drafted reply in the user's voice (`review-pr-comments` has the triage method). Offer to implement accepted ones when the user says so.
+Follow `review-pr-comments` for each new comment (one with no reply from the user's login after the reviewer's last comment): triage, implement the accepted ones, verify, commit, push, reply and resolve. It counts against the 3 fix attempts. Where that skill says to stop and ask, report the comment and leave it for the user.
 
 Every comment here sits on the agent's own PR, so one the user accepts is something the setup should have caught. When you implement it, record the lesson once. Rounds repeat and the lessons log is archived when `memory-distill` runs, so keep the comment URLs you have recorded in `<spec-dir>/babysit.json` under `lessons` and skip any already there:
 
@@ -60,7 +60,7 @@ Route by how the rule behaves: zero exceptions goes to `lint-rule` (visible in t
 
 ### 5. Report
 
-One short block: PR state, checks (pass, fail, pending), what you fixed with the evidence, comments awaiting the user, lessons recorded, and whether another round is needed. When all checks are green and nothing is pending, say so and suggest stopping the loop.
+One short block: PR state, checks (pass, fail, pending), what you fixed with the evidence, comments answered and resolved, push backs left open, comments awaiting the user, lessons recorded, and whether another round is needed. When all checks are green and nothing is pending, say so and suggest stopping the loop.
 
 ## Gotchas
 
