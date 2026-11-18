@@ -2,7 +2,7 @@
 name: open-draft-pr
 description: Pushes the agent's own branch and opens a draft pull request attributed to the user alone, after auditing commits and body for tool credit and confirming checks pass. Never marks a PR ready and never merges. Use at the end of a delivery, or when the user says "open a draft PR", "push this as a draft".
 effort: low
-allowed-tools: Bash(git status *) Bash(git log *) Bash(ai-work *) Bash(ai-verify *)
+allowed-tools: Bash(git status *) Bash(git log *) Bash(git diff *) Bash(ai-work *) Bash(ai-verify *) Bash(gh label list *) Bash(gh pr list *)
 ---
 
 # Open draft PR
@@ -43,7 +43,7 @@ ai-work task list || true
   ai-pr-body
   ```
 
-  It refuses a description that drifted from the template (no `## 📓 Summary` heading, or anything above it) and writes `pr-body.md`. Never open the PR from a body that did not pass: the guard refuses it from an agent branch whose body lacks the summary heading. `## 🧪 Testing` is optional. Add no other section.
+  It refuses a description that drifted from the template (no `## 📓 Summary` heading, or anything above it) and writes `pr-body.md`. Never open the PR from a body that did not pass: the guard refuses it from an agent branch whose body lacks the summary heading. `## 📸 Screenshots` and `## 🧪 Testing` are optional. Add no other section.
 
 ### 2. Audit
 
@@ -67,17 +67,31 @@ git push -u origin <branch>
 
 Use the remote the branch tracks if it has one, or `remote.pushDefault`. A rejected push means the remote moved or you lack access: report it. Do not retry with force.
 
-### 4. Open the draft
+### 4. Pick labels
+
+Choose labels from what this repo already uses for similar changes in the same code area. Do not invent a label.
 
 ```bash
-gh pr create --draft --title "<concise title>" --body-file "<spec-dir>/pr-body.md"
+git diff --name-only <base>...HEAD
+gh label list --limit 200
+gh pr list --state merged --limit 30 --json number,title,labels,files
+```
+
+Find the merged PRs whose files overlap the paths this branch touches (same plugin or package directory first, then the parent area) and note which labels they carry. Keep a label when most of those PRs have it and it fits this change: the team or area label, the change type (bug, feature, refactor), a release-note label if the repo uses one. Drop a label that only appears on a PR that was unusual. Use only names that `gh label list` returned, spelled exactly.
+
+When no similar PR carries a label, or the repo has none, open the PR without labels and say so in the report. Do not guess.
+
+### 5. Open the draft
+
+```bash
+gh pr create --draft --title "<concise title>" --body-file "<spec-dir>/pr-body.md" --label "<label>" --label "<label>"
 ```
 
 Add `--base <branch>` only when the repo's default base is not the intended one. The title is plain: what the change does, no prefix naming a tool.
 
-### 5. Report
+### 6. Report
 
-Print the PR URL, the audit result, and the verification evidence. Say that the PR is a draft and that marking it ready is the user's decision.
+Print the PR URL, the labels set and the similar PRs they came from, the audit result, and the verification evidence. Say that the PR is a draft and that marking it ready is the user's decision.
 
 ## If something is blocked
 
