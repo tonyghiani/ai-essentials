@@ -6,7 +6,7 @@ Clone this repo, then run the installer for each tool you use.
 git clone https://github.com/marcoghiani/ai-essentials
 cd ai-essentials
 chmod +x setup/install.sh
-./setup/install.sh --all          # Claude Code + Cursor + Codex
+./setup/install.sh --all          # Claude Code + Cursor + Codex + Open Code
 ```
 
 Or per tool:
@@ -15,6 +15,7 @@ Or per tool:
 ./setup/install.sh --claude-code
 ./setup/install.sh --cursor
 ./setup/install.sh --codex
+./setup/install.sh --open-code
 ```
 
 Safe to re-run. Codex stores conflicts under `~/.codex/backups/ai-essentials/`;
@@ -91,6 +92,21 @@ backup directories outside skill and agent discovery paths.
 Start a new Codex session after installation to load the global instructions and
 agent definitions.
 
+### Open Code
+
+Symlinks into `~/.config/opencode/`:
+
+| Link | Source |
+|------|--------|
+| `~/.config/opencode/skills/<name>` | `skills/<name>/` (one link per skill directory; `shared` included) |
+| `~/.config/opencode/rules` | `rules/` |
+| `~/.config/opencode/ai-essentials.md` | `open-code/INSTRUCTIONS.md` |
+| `~/.ai-essentials/repo` | this repository; the stable path skills use to reach scripts |
+
+The installer creates `~/.config/opencode/opencode.json` with `"instructions": ["ai-essentials.md"]` only when it does not exist; an existing file is left alone. Use `./setup/install.sh --config-write` to merge the instructions entry into a live `opencode.json` without removing anything already there.
+
+Open Code loads skills from the `skills/` directory under its config dir, so each linked skill is available by its folder name. Run `opencode reload` after installation so the running server picks up the new config, skills and rules.
+
 ---
 
 ## Live configs: preview, apply, check
@@ -112,6 +128,7 @@ The merge is additive and idempotent. It touches only these keys and keeps every
 | `~/.cursor/cli-config.json` | `attribution`, `permissions` |
 | `~/.codex/hooks.json` | `hooks` |
 | `~/.codex/rules/guardrails.rules` | copied whole; `~/.codex/rules/default.rules` is never touched |
+| `~/.config/opencode/opencode.json` | `instructions`, unioned with whatever is already there |
 
 Permission blocks are generated from `policy/guardrails.json`; after editing it run `node scripts/guardrails/render.mjs --write`.
 
@@ -151,6 +168,11 @@ cat ~/.codex/AGENTS.md                 # should show global instructions
 ls ~/.codex/guidance                  # should list *.mdc files
 ls ~/.codex/agents                    # should list the generated *.toml agent definitions
 ls ~/.codex/rules                      # should include guardrails.rules
+
+# Open Code
+ls ~/.config/opencode/skills           # should list skill folders and shared
+cat ~/.config/opencode/opencode.json   # should list ai-essentials.md in instructions
+ls ~/.config/opencode/rules            # should list *.mdc files
 
 # Repo structure
 ./scripts/validate.sh

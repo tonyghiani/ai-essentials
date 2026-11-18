@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
@@ -73,6 +73,35 @@ describe('install on a clean home', () => {
   it('exposes the repo at the stable path the skills use', () => {
     install(['--all']);
     assert.equal(realpathSync(join(home, '.ai-essentials', 'repo')), realpathSync(REPO));
+  });
+
+  it('links Open Code skills, instructions and rules', () => {
+    install(['--open-code']);
+    const skills = readdirSync(join(REPO, 'skills'), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && existsSync(join(REPO, 'skills', entry.name, 'SKILL.md')))
+      .map((entry) => entry.name);
+    for (const name of skills) {
+      assert.equal(realpathSync(join(home, '.config', 'opencode', 'skills', name)), realpathSync(join(REPO, 'skills', name)));
+    }
+    assert.equal(realpathSync(join(home, '.config', 'opencode', 'ai-essentials.md')), realpathSync(join(REPO, 'open-code', 'INSTRUCTIONS.md')));
+    assert.equal(realpathSync(join(home, '.config', 'opencode', 'rules')), realpathSync(join(REPO, 'rules')));
+    assert.deepEqual(JSON.parse(readFileSync(join(home, '.config', 'opencode', 'opencode.json'), 'utf8')), { instructions: ['ai-essentials.md'] });
+  });
+
+  it('does not overwrite an Open Code config the user already has', () => {
+    mkdirSync(join(home, '.config', 'opencode'), { recursive: true });
+    writeFileSync(join(home, '.config', 'opencode', 'opencode.json'), JSON.stringify({ model: 'ollama/llama3' }));
+    install(['--open-code']);
+    assert.deepEqual(JSON.parse(readFileSync(join(home, '.config', 'opencode', 'opencode.json'), 'utf8')), { model: 'ollama/llama3' });
+  });
+
+  it('merges into the Open Code config without removing the user\'s keys', () => {
+    install(['--open-code']);
+    writeFileSync(join(home, '.config', 'opencode', 'opencode.json'), JSON.stringify({ model: 'ollama/llama3', instructions: ['own.md'] }));
+    install(['--open-code', '--config-write']);
+    const merged = JSON.parse(readFileSync(join(home, '.config', 'opencode', 'opencode.json'), 'utf8'));
+    assert.equal(merged.model, 'ollama/llama3');
+    assert.deepEqual(merged.instructions, ['own.md', 'ai-essentials.md']);
   });
 
   it('is idempotent: a second config merge reports nothing to change', () => {

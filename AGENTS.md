@@ -141,6 +141,13 @@ Per-repo contracts (`contracts/*.json`) and `policy/decisions.local.md` are giti
 - `skills/*/` — individually symlinked to `~/.agents/skills/`, with shared references
 - `codex/agents/*.toml` — native agent metadata, combined with `agents/*.md` into `~/.codex/agents/`
 
+## Open Code specifics
+
+- [open-code/INSTRUCTIONS.md](open-code/INSTRUCTIONS.md) — global instructions (symlinked to `~/.config/opencode/ai-essentials.md` and referenced from `~/.config/opencode/opencode.json`)
+- `skills/*/` — individually symlinked to `~/.config/opencode/skills/`, with shared references
+- `rules/` — linked at `~/.config/opencode/rules`
+- [open-code/opencode.reference.json](open-code/opencode.reference.json) — merged into `~/.config/opencode/opencode.json` by `./setup/install.sh --config-write`
+
 ## Installation
 
 Run `./setup/install.sh --all` after cloning. See [SETUP.md](SETUP.md) for details.

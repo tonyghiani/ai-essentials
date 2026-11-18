@@ -72,6 +72,8 @@ export function checkLinks(home) {
     [join(home, '.codex', 'AGENTS.md'), join(REPO, 'codex', 'INSTRUCTIONS.md')],
     [join(home, '.codex', 'guidance'), join(REPO, 'rules')],
     [join(home, '.codex', 'hooks'), join(REPO, 'codex', 'hooks')],
+    [join(home, '.config', 'opencode', 'ai-essentials.md'), join(REPO, 'open-code', 'INSTRUCTIONS.md')],
+    [join(home, '.config', 'opencode', 'rules'), join(REPO, 'rules')],
     ...readdirSync(join(REPO, 'rules'))
       .filter((name) => name.endsWith('.mdc'))
       .map((name) => /** @type {[string, string]} */ ([join(home, '.cursor', 'rules', name), join(REPO, 'rules', name)])),
@@ -85,6 +87,8 @@ export function checkLinks(home) {
     .map((entry) => entry.name);
   const missingSkills = skills.filter((name) => real(join(home, '.agents', 'skills', name)) !== real(join(REPO, 'skills', name)));
   checks.push(check('codex skills linked into ~/.agents/skills', missingSkills.length === 0, `missing: ${missingSkills.join(', ')}`));
+  const missingOpenCodeSkills = skills.filter((name) => real(join(home, '.config', 'opencode', 'skills', name)) !== real(join(REPO, 'skills', name)));
+  checks.push(check('open code skills linked into ~/.config/opencode/skills', missingOpenCodeSkills.length === 0, `missing: ${missingOpenCodeSkills.join(', ')}`));
 
   const agents = readdirSync(join(REPO, 'agents')).filter((name) => name.endsWith('.md')).map((name) => name.replace(/\.md$/, ''));
   const missingAgents = agents.filter((name) => !existsSync(join(home, '.codex', 'agents', `${name}.toml`)));
@@ -157,6 +161,10 @@ export function checkConfigs(home) {
   }
   const rules = join(home, '.codex', 'rules', 'guardrails.rules');
   checks.push(check('codex: guardrail rules installed', existsSync(rules), `${rules} is missing`));
+
+  const openCodeConfig = readJson(join(home, '.config', 'opencode', 'opencode.json'));
+  const instructed = Array.isArray(openCodeConfig?.instructions) && openCodeConfig.instructions.includes('ai-essentials.md');
+  checks.push(check('open code: instructions referenced', instructed, 'opencode.json does not list ai-essentials.md in instructions'));
   return checks;
 }
 
@@ -233,6 +241,7 @@ export function manualSteps() {
     { status: 'WARN', label: 'codex: trust the hooks', detail: 'open Codex once, run /hooks, review and trust the five ai-essentials hooks; project hooks never run untrusted' },
     { status: 'WARN', label: 'cursor: attribution toggles', detail: 'Cursor Settings: turn off Commit Attribution and PR Attribution; the config keys come from forum reports, not docs' },
     { status: 'WARN', label: 'cursor: test the hooks in the app', detail: 'the Cursor CLI is not installed here, so hook payloads follow the docs; trigger one and check ~/.ai-essentials/state/hook-errors.jsonl' },
+    { status: 'WARN', label: 'open code: reload the config', detail: 'run opencode reload so the running server loads the installed instructions, skills and rules' },
   ];
 }
 

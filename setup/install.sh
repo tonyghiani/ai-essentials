@@ -10,6 +10,8 @@ source "$REPO/setup/claude-code.sh"
 source "$REPO/setup/cursor.sh"
 # shellcheck source=setup/codex.sh
 source "$REPO/setup/codex.sh"
+# shellcheck source=setup/open-code.sh
+source "$REPO/setup/open-code.sh"
 
 info()    { printf '\033[1;34m→\033[0m  %s\n' "$*"; }
 success() { printf '\033[1;32m✓\033[0m  %s\n' "$*"; }
@@ -98,6 +100,8 @@ Options:
   --claude-code  Symlink into ~/.claude/ (skills, agents, hooks, CLAUDE.md, settings)
   --cursor       Symlink rules into ~/.cursor/rules/ and skills into ~/.cursor/skills/
   --codex        Install global instructions, skills, rule references, hooks and custom agents
+  --open-code    Symlink skills into ~/.config/opencode/skills/, link the global instructions and rules
+                 into ~/.config/opencode/, and create or merge ~/.config/opencode/opencode.json
   --config       Preview merging the reference hooks, permissions and attribution settings into
                  the live Claude, Cursor and Codex configs (writes nothing)
   --config-write Apply that merge, saving a backup of each file under ~/.ai-essentials/backups
@@ -118,6 +122,7 @@ fi
 INSTALL_CLAUDE_CODE=false
 INSTALL_CURSOR=false
 INSTALL_CODEX=false
+INSTALL_OPEN_CODE=false
 RUN_CONFIG=false
 CONFIG_WRITE=false
 RUN_DOCTOR=false
@@ -125,10 +130,11 @@ INSTALL_TRIAGE=false
 
 for arg in "$@"; do
   case $arg in
-    --all)         INSTALL_CLAUDE_CODE=true; INSTALL_CURSOR=true; INSTALL_CODEX=true ;;
+    --all)         INSTALL_CLAUDE_CODE=true; INSTALL_CURSOR=true; INSTALL_CODEX=true; INSTALL_OPEN_CODE=true ;;
     --claude-code) INSTALL_CLAUDE_CODE=true ;;
     --cursor)      INSTALL_CURSOR=true ;;
     --codex)       INSTALL_CODEX=true ;;
+    --open-code)   INSTALL_OPEN_CODE=true ;;
     --config)      RUN_CONFIG=true ;;
     --config-write) RUN_CONFIG=true; CONFIG_WRITE=true ;;
     --doctor)      RUN_DOCTOR=true ;;
@@ -138,13 +144,14 @@ for arg in "$@"; do
   esac
 done
 
-if [[ "$INSTALL_CLAUDE_CODE" == true || "$INSTALL_CURSOR" == true || "$INSTALL_CODEX" == true ]]; then
+if [[ "$INSTALL_CLAUDE_CODE" == true || "$INSTALL_CURSOR" == true || "$INSTALL_CODEX" == true || "$INSTALL_OPEN_CODE" == true ]]; then
   install_core "$REPO"
 fi
 
 [[ "$INSTALL_CLAUDE_CODE" == true ]] && install_claude_code "$REPO"
 [[ "$INSTALL_CURSOR"      == true ]] && install_cursor      "$REPO"
 [[ "$INSTALL_CODEX"       == true ]] && install_codex       "$REPO"
+[[ "$INSTALL_OPEN_CODE"   == true ]] && install_open_code   "$REPO"
 [[ "$INSTALL_TRIAGE"      == true ]] && install_triage_schedule "$REPO"
 
 if [[ "$RUN_CONFIG" == true ]]; then

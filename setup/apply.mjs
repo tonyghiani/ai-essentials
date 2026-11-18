@@ -18,6 +18,7 @@
  *   ~/.cursor/cli-config.json        attribution, permissions
  *   ~/.codex/hooks.json              hooks
  *   ~/.codex/rules/guardrails.rules   copied whole (generated file)
+ *   ~/.config/opencode/opencode.json  instructions (unioned with any the user already has)
  */
 
 import { spawnSync } from 'node:child_process';
@@ -235,6 +236,20 @@ export function mergeCodexHooksFile(live, reference) {
 }
 
 /**
+ * Open Code shape: a top-level `instructions` array of file paths. The reference entry is added
+ * once and never removes instructions the user already listed.
+ *
+ * @param {Record<string, unknown>} live
+ * @param {Record<string, unknown>} reference Already comment-stripped.
+ * @returns {Record<string, unknown>}
+ */
+export function mergeOpenCodeConfig(live, reference) {
+  const merged = structuredClone(live);
+  merged.instructions = unionArrays(merged.instructions ?? [], reference.instructions ?? []);
+  return merged;
+}
+
+/**
  * @param {string} home
  * @returns {Array<{ name: string, target: string, source: string, kind: 'json' | 'copy', merge?: (live: Record<string, unknown>, reference: Record<string, unknown>) => Record<string, unknown> }>}
  */
@@ -245,6 +260,7 @@ export function targets(home) {
     { name: 'Cursor CLI config', target: join(home, '.cursor', 'cli-config.json'), source: join(REPO, 'cursor', 'cli-config.reference.json'), kind: 'json', merge: mergeCursorCliConfig },
     { name: 'Codex hooks', target: join(home, '.codex', 'hooks.json'), source: join(REPO, 'codex', 'hooks.reference.json'), kind: 'json', merge: mergeCodexHooksFile },
     { name: 'Codex rules', target: join(home, '.codex', 'rules', 'guardrails.rules'), source: join(REPO, 'codex', 'guardrails.rules'), kind: 'copy' },
+    { name: 'Open Code config', target: join(home, '.config', 'opencode', 'opencode.json'), source: join(REPO, 'open-code', 'opencode.reference.json'), kind: 'json', merge: mergeOpenCodeConfig },
   ];
 }
 

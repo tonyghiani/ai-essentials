@@ -57,13 +57,13 @@ The guard hook reads command text, so treat it as the first layer, not the last.
 
 The **content** is tool-agnostic plain Markdown. **File formats and install paths** differ by product:
 
-| Concept | This repo | Cursor | Claude Code | Codex |
-|---------|-----------|--------|-------------|----------------|
-| **Rules** | `rules/*.mdc` | `.cursor/rules/` or `~/.cursor/rules/` | `.claude/rules/` or `CLAUDE.md` | Referenced from `~/.codex/AGENTS.md` |
-| **Skills** | `skills/*/SKILL.md` | `.cursor/skills/` or `~/.cursor/skills/` | Project or user skills dir | `~/.agents/skills/` |
-| **Agents** | `agents/*.md` | `.cursor/agents/` or `~/.cursor/agents/` | Subagent definitions | Converted to `~/.codex/agents/*.toml` |
-| **Always-on rules** | `alwaysApply: true` in frontmatter | Auto-injected | Varies by tool | Included in global `AGENTS.md` |
-| **File-scoped rules** | `globs:` in frontmatter | Activates when matching files are open | Tool-dependent | Global instructions select rules by task and file type |
+| Concept | This repo | Cursor | Claude Code | Codex | Open Code |
+|---------|-----------|--------|-------------|-------|-----------|
+| **Rules** | `rules/*.mdc` | `.cursor/rules/` or `~/.cursor/rules/` | `.claude/rules/` or `CLAUDE.md` | Referenced from `~/.codex/AGENTS.md` | `~/.config/opencode/rules/*.mdc`, referenced from `opencode.json` |
+| **Skills** | `skills/*/SKILL.md` | `.cursor/skills/` or `~/.cursor/skills/` | Project or user skills dir | `~/.agents/skills/` | `~/.config/opencode/skills/` |
+| **Agents** | `agents/*.md` | `.cursor/agents/` or `~/.cursor/agents/` | Subagent definitions | Converted to `~/.codex/agents/*.toml` | not installed; personas are pasted in |
+| **Always-on rules** | `alwaysApply: true` in frontmatter | Auto-injected | Varies by tool | Included in global `AGENTS.md` | Included in the global instructions file |
+| **File-scoped rules** | `globs:` in frontmatter | Activates when matching files are open | Tool-dependent | Global instructions select rules by task and file type | read from `rules/` when a task matches |
 
 `.mdc` frontmatter (`alwaysApply`, `globs`) is a Cursor convention. The rule **body** works anywhere: paste it into `AGENTS.md`, Claude project rules, or your tool's instruction file.
 
@@ -106,6 +106,7 @@ Or per tool:
 ./setup/install.sh --claude-code
 ./setup/install.sh --cursor
 ./setup/install.sh --codex
+./setup/install.sh --open-code
 ```
 
 Safe to re-run. Codex backs up conflicts under `~/.codex/backups/ai-essentials/`;
